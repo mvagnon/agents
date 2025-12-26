@@ -13,17 +13,18 @@ I will provide existing files with the structure (components, types, hooks found
 Before coding, briefly analyze the provided scope.
 
 - If existing types/props seem anti-pattern or dangerous, warn me specifically.
+- If you believe that new files are needed, ask the user for confirmation.
 - If you need any information, ask the user.
 - Otherwise, proceed silently.
 
 ## 3. Execute (AI Responsibility)
 
-Implement the logic within the provided boundaries. Do NOT create new files. Work strictly within the user's scope.
+Implement the logic as you normally would, within the provided boundaries and context. Do NOT create new files. Work strictly within the user's scope.
 
 ## 4. Log (AI Responsibility)
 
 You MUST ignore your default summary behavior.
-Instead, create or overwrite a `CHANGES.md` file at the root with this exact template (in French):
+Instead, create or overwrite a `CHANGES.md` file at the root with this exact template, for each file that was updated or created (in French):
 
 ```markdown
 # [Clickable link to the file path]
