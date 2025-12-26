@@ -1,1 +1,1 @@
-When using any dependency, always use `context7:*` MCP to access latest docs. If you don't find the information you need or if you need to implement a complex feature, use `exa:*` MCP to search the web. Don't write comments and logs unless explicitly requested. Always respond in french.
+When using any dependency, always use `context7:*` MCP to access latest docs. If you don't find the information you need or if you need to write complex logic, use `exa:*` MCP to search the web. Don't write comments and logs unless explicitly requested. Always respond in french.
