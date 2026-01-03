@@ -11,7 +11,7 @@ alwaysApply: true
 - **Testing**: Jest
 - **Containerization**: Docker
 - **Deployment**: Vercel, Google Cloud Run
-- **CI/CD**: GitHub Actions, GitLab CI, Trigger.dev
+- **CI/CD**: GitHub Actions, GitLab CI
 
 ## Frontend
 
@@ -31,15 +31,15 @@ alwaysApply: true
 
 - **Language**: TypeScript, SQL
 - **Runtime**: Node.js, Bun
-- **Framework**: Hono, Fastify, Nest.js
+- **Framework**: Fastify, Nest.js, Express.js
 - **Database**: PostgreSQL
 - **ORM**: Drizzle, Prisma
 - **Validation**: Zod
 - **Authentication**: Auth0
 - **Error Handling**: Effect, try/catch
-- **API**: REST, tRPC
-- **Queue/Jobs**: BullMQ, Trigger.dev
+- **API**: REST, tRPC, Next.js API Routes
+- **Queue/Jobs**: BullMQ
 - **Caching**: Redis, Upstash
 - **Logging**: Pino
 - **Documentation**: OpenAPI/Swagger
-- **Other Dependencies**:
+- **Other Dependencies**: OpenRouter API, Exa API
