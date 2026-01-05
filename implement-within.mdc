@@ -13,6 +13,7 @@ When files are provided as context, treat them as the authoritative foundation (
 1. **Analyze the context**
 
    - Read the provided files carefully to understand the existing codebase and its architecture;
+   - Understand the project (language, purpose, etc.);
    - Read the design patterns and principles.
 
 2. **Plan the implementation**
@@ -20,12 +21,10 @@ When files are provided as context, treat them as the authoritative foundation (
    - Understand the request and ask for clarification if needed;
    - Plan the steps required to complete the implementation.
 
-3. **Implement the feature following the following principles**
+3. **Implement the feature**
 
-   - Respect the existing codebase and its architecture;
-   - Follow the design patterns and principles;
-   - Follow the SOLID principles;
-   - Follow the KISS principle.
+   - STRICTLY respect the architecture, project purpose and overall design;
+   - STRICTLY follow the SOLID and KISS principles.
 
 ## Rules
 
