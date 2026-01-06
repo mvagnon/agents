@@ -19,6 +19,7 @@ alwaysApply: true
 
 **React.js (Vite.js)**
 **Next.js**
+**React Native**
 
 ### Dependencies
 
@@ -34,7 +35,7 @@ alwaysApply: true
 - **UI Components**: ShadCN UI, Radix UI, Material UI
 - **Icons**: Lucide, lucide-animated, LDRS
 - **Testing**: React Testing Library, Jest
-- **Observability**: PostHog
+- **Monitoring**: PostHog, Sentry
 
 ## Backend
 
