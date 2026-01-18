@@ -24,7 +24,7 @@
 - **Styling**: Tailwind CSS, Material UI, Framer Motion
 - **UI Components**: ShadCN UI, Radix UI, Material UI
 - **Icons**: MUI Icons, Lucide, lucide-animated, LDRS
-- **Testing**: Vitest
+- **Testing**: Vitest, Jest, React Testing Library
 - **Documentation**: TSDoc
 
 ## Middleware
@@ -43,7 +43,7 @@
 - **Error Handling**: Effect, try/catch
 - **AI**: OpenRouter API, Exa API, Langchain
 - **External APIs**: RapidAPI
-- **Testing**: Vitest
+- **Testing**: Vitest, Jest
 - **Documentation**: Swagger, TSDoc
 
 ## Data
