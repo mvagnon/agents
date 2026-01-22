@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="./readme-illustration.svg" />
+</div>
+
 - [Claude Code Workflow](#claude-code-workflow)
   - [Features](#features)
   - [Structure du projet](#structure-du-projet)
@@ -5,8 +9,6 @@
   - [Utilisation](#utilisation)
   - [Skills disponibles](#skills-disponibles)
   - [Plugins activés](#plugins-activés)
-
-![README Illustration](./readme-illustration.svg)
 
 # Claude Code Workflow
 
