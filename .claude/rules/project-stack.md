@@ -4,7 +4,7 @@
 
 - **Code Quality**: ESLint, Prettier, SonarQube
 - **Version Control**: Git
-- **Containerization**: Docker
+- **Containerization**: Docker, Kubernetes
 - **CI/CD**: GitHub Actions, GitLab CI
 - **Deployment**: Vercel, Google Cloud
 - **Monitoring**: PostHog, Sentry
