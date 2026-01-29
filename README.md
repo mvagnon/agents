@@ -42,7 +42,7 @@ bootstrap.mjs               # Node.js setup script
 | State      | Zustand, TanStack Query, React Context                    |
 | Testing    | Vitest, Jest, React Testing Library                       |
 | Tooling    | ESLint, Prettier, pnpm, Docker                            |
-| Middleware | Auth0, Stripe                                             |
+| Middleware | Clerk, Stripe                                             |
 
 ## Quick Start with Bootstrap
 
