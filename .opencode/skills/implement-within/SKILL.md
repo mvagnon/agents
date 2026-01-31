@@ -10,7 +10,7 @@ Treat provided files as the authoritative foundation: existing types, classes, i
 ## Workflow
 
 1. **Analyze** — Carefully read the provided files, understand the architecture and existing patterns.
-2. **Plan** — Identify necessary modifications, ask for clarifications if needed.
+2. **Plan** — Identify necessary modifications. Ignore any assumptions.
 3. **Implement** — Strictly follow the architecture, SOLID, and KISS principles.
 
 ## Strict Rules

@@ -3,7 +3,7 @@
 ## Core Rules
 
 - List of dependencies in `./package.json`;
-- You can suggest changes but not without asking first;
+- Suggest new dependencies if needed;
 - Functional components only;
 - Destructure props in the signature;
 - One file = one exported component (+ private helpers if needed);
