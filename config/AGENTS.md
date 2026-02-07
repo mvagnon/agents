@@ -1,8 +1,29 @@
-# Master Rules Checklist
+# Master Rules
 
-The following checklist MUST be applied by ALL agents:
+## Project-Specific Rules
 
-- [ ] ALWAYS write TSDoc/docstrings FOR AND ONLY FOR **exported** functions, **exported** classes, **exported** types/interfaces;
-- [ ] NEVER add other comments or logs UNLESS explicitly requested;
-- [ ] Use `context7:*` MCP as the authoritative documentation source for all dependencies;
-- [ ] Use `exa:*` MCP as a supplementary source when `context7:*` is insufficient.
+Find the project-specific master rules here → `project.md`.
+
+## Before Writing Code
+
+Before writing or modifying code that uses any external library:
+
+1. **First**, resolve the library with _Context7 MCP_ to get the up-to-date documentation;
+2. **Only** if Context7 returns no results or insufficient info, fall back to _Exa MCP_ as a secondary source.
+
+> **Important:** ALWAYS prefer Context7 documentation over training data as the source of truth, especially for critical features (security, billing, authentication, payments, etc.).
+
+## While Writing Code
+
+### Documentation & Logging
+
+- Write TSDoc/docstrings ONLY for **exported** functions, classes, types, and interfaces;
+- DO NOT add inline comments or logs unless explicitly requested.
+
+## After Writing Code
+
+Verify the following checklist. Iterate until complete:
+
+- [ ] No code was duplicated
+- [ ] No logs were added without prior consent
+- [ ] `README.md` is still up to date

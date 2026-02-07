@@ -32,7 +32,7 @@ const ARCHITECTURES = [
 /**
  * Generic items included regardless of technology/architecture selection.
  */
-const GENERIC_RULES = [];
+const GENERIC_RULES = ["project"];
 const GENERIC_SKILLS = ["readme-writing", "implement-within"];
 const GENERIC_AGENTS = [];
 
@@ -188,7 +188,7 @@ async function main() {
   );
 
   const selectedTechs = config.techs || [];
-  const selectedArchs = config.archs || [];
+  const selectedArchs = config.archs ? [config.archs] : [];
   const useSymlinks = config.useSymlinks;
   const gitignoreMode = config.gitignoreMode;
   const selectedTool = TOOLS[config.tool];
@@ -308,6 +308,15 @@ async function main() {
   summaryLines.push(`.gitignore: ${gitignoreAction}`);
 
   p.note(summaryLines.join("\n"), `${selectedTool.label} Setup`);
+
+  p.note(
+    [
+      "1. Modify Project.md to add project-specific rules",
+      "2. Add skills, agents, or MCP based on your needs",
+      "3. Alternatively, add Claude Code plugins",
+    ].join("\n"),
+    "Next Steps",
+  );
 
   p.outro("Done");
 }
