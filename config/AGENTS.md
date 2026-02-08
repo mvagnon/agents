@@ -23,7 +23,7 @@ Before writing or modifying code that uses any external library:
 
 ## After Writing Code
 
-Verify the following checklist. Iterate until complete:
+ALWAYS check the following after modifying the codebase. Iterate until complete:
 
 - [ ] Generic code is reusable
 - [ ] No code was duplicated
