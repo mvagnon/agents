@@ -1,6 +1,6 @@
 ---
 name: readme-writing
-description: Generates or updates all the README.md present in the project by analyzing the structure and configuration files.
+description: Write README.md for a project.
 ---
 
 # README Generator Skill
@@ -89,13 +89,9 @@ src/
 | ------ | ----------- |
 | `dev`  | ...         |
 
-## License
-
-MIT (or other)
-```
-
 ## Rules
 
 - **Never invent** features not present in the code;
 - **Preserve** existing custom sections (Contributing, Acknowledgments, etc.);
 - **Adapt** the structure based on project type (lib, app, monorepo);
+```
