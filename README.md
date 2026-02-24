@@ -37,8 +37,16 @@ Shared configuration and conventions to bootstrap AI coding assistants on TypeSc
 
 ### Usage
 
+Bootstrap a new project:
+
 ```bash
-npx -y mvagnon-agents ../my-project
+npx mvagnon-agents ../my-project
+```
+
+Upgrade instructions:
+
+```bash
+npx mvagnon-agents upgrade
 ```
 
 ### Interactive Walkthrough
@@ -142,15 +150,15 @@ This synchronizes the config files to `~/.config/mvagnon-agents/config/`, which 
 If you set up your project before this feature was introduced, re-run the bootstrap command once to update your symlinks to point to the stable directory:
 
 ```bash
-npx -y mvagnon-agents ../my-project
+npx mvagnon-agents ../my-project
 ```
 
 ## Symlinks vs Local Copies
 
-| Mode | How it works | Pros | Cons |
-| --- | --- | --- | --- |
-| **External symlinks** | Tool dirs symlink to `~/.config/mvagnon-agents/` | Auto-updates across all projects on `upgrade` | Not tracked in git |
-| **Local copies + relative links** | Files copied to `.mvagnon/agents/`, tool dirs use relative symlinks to it | Tracked in git, shareable with team | Updated per project on `upgrade` |
+| Mode                              | How it works                                                              | Pros                                          | Cons                             |
+| --------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------- |
+| **External symlinks**             | Tool dirs symlink to `~/.config/mvagnon-agents/`                          | Auto-updates across all projects on `upgrade` | Not tracked in git               |
+| **Local copies + relative links** | Files copied to `.mvagnon/agents/`, tool dirs use relative symlinks to it | Tracked in git, shareable with team           | Updated per project on `upgrade` |
 
 In both modes, items listed in `COPIED_RULES`, `COPIED_SKILLS`, or `COPIED_AGENTS` are copied to `.mvagnon/agents/` to allow per-project customization. Config files (`.mcp.json`, `opencode.json`, etc.) are always copied directly.
 
