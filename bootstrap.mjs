@@ -29,7 +29,7 @@ const COPIED_SKILLS = [];
 const COPIED_AGENTS = [];
 
 // Intermediate directory in the target project for per-project customizable resources
-const INTERMEDIATE_DIR = ".mvagnon-agents";
+const INTERMEDIATE_DIR = ".mvagnon/agents";
 
 // Tool definitions: directory structure, root files, config files, gitignore
 const TOOLS = {
@@ -114,6 +114,16 @@ async function main() {
   }
 
   console.clear();
+
+  const banner = [
+    "                                    __                 _      ",
+    " _ ____ ____ _ __ _ _ _  ___ _ _   / /_ _ __ _ ___ _ _| |_ ___",
+    "| '  \\ V / _` / _` | ' \\/ _ \\ ' \\ / / _` / _` / -_) ' \\  _(_-<",
+    "|_|_|_\\_/\\__,_\\__, |_||_\\___/_||_/_/\\__,_\\__, \\___|_||_\\__/__/",
+    "              |___/                      |___/                 ",
+  ];
+  console.log("\x1b[36m" + banner.join("\n") + "\x1b[0m\n");
+
   p.intro(`AI Workflow → ${targetPath}`);
 
   const config = await p.group(
@@ -346,10 +356,19 @@ async function linkMatchingItems(
     const intermediatePath = isCopied
       ? path.join(intermediateDir, entry)
       : null;
-    const alreadyProcessed = isCopied && processedIntermediateFiles.has(intermediatePath);
-    const hasConflict = isCopied && !alreadyProcessed && fs.existsSync(intermediatePath);
+    const alreadyProcessed =
+      isCopied && processedIntermediateFiles.has(intermediatePath);
+    const hasConflict =
+      isCopied && !alreadyProcessed && fs.existsSync(intermediatePath);
 
-    items.push({ entry, fullPath, isCopied, intermediatePath, hasConflict, alreadyProcessed });
+    items.push({
+      entry,
+      fullPath,
+      isCopied,
+      intermediatePath,
+      hasConflict,
+      alreadyProcessed,
+    });
   }
 
   // Ask about all conflicts in one batch (single spinner stop/start)
