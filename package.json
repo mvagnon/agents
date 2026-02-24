@@ -1,6 +1,6 @@
 {
   "name": "mvagnon-agents",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Shared configuration and conventions to bootstrap AI coding assistants.",
   "type": "module",
   "bin": {
