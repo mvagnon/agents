@@ -1,15 +1,14 @@
-# React Hexagonal Architecture
+# Hexagonal Architecture
 
 ## Structure
 
 ```
 src/
-├── application/       # UI — Can freely use React
-│   ├── components/    # React components
-│   ├── hooks/         # Business hooks (consume domain)
-│   ├── pages/         # Route components
-│   └── providers/     # Context providers
-├── domain/            # Business — Pure TypeScript, ZERO React dependencies
+├── application/       # Use cases — Orchestrates domain logic
+│   ├── services/      # Application services
+│   ├── commands/      # Write operations
+│   └── queries/       # Read operations
+├── domain/            # Business — Pure language, ZERO framework dependencies
 │   ├── entities/      # Business models
 │   ├── ports/         # Interfaces/contracts
 │   └── lib/           # Pure functions
@@ -22,15 +21,15 @@ src/
 
 ### Domain (core)
 
-- **No** React dependencies (no JSX, no hooks)
+- **No** framework dependencies
 - Pure functions, testable in isolation
 - Defines `ports` (interfaces) that infrastructure implements
 
-### Application (UI)
+### Application (use cases)
 
-- Consumes domain via custom hooks
-- Components split by responsibility
-- State management: `useState` → `useReducer` → Context → Zustand (progressive escalation)
+- Orchestrates domain logic
+- Implements use cases by composing domain services and ports
+- No direct dependency on infrastructure
 
 ### Infrastructure (adapters)
 

@@ -395,20 +395,34 @@ function isTechOrArchSpecific(name) {
   const allArchs = ARCHITECTURES.filter((a) => a.value !== "none").map(
     (a) => a.value,
   );
+  const segments = name.split("-");
 
   return (
-    allTechs.some((tech) => name.startsWith(`${tech}-`)) ||
-    allArchs.some((arch) => name.includes(arch))
+    allTechs.some((tech) => segments.includes(tech)) ||
+    allArchs.some((arch) => segments[0] === arch)
   );
 }
 
 function shouldInclude(name, selectedTechs, selectedArchs) {
   if (!isTechOrArchSpecific(name)) return true;
 
-  const matchesTech = selectedTechs.some((tech) => name.startsWith(`${tech}-`));
+  const segments = name.split("-");
+  const allTechs = TECHNOLOGIES.map((t) => t.value);
+  const allArchs = ARCHITECTURES.filter((a) => a.value !== "none").map(
+    (a) => a.value,
+  );
+
+  const isTechSpecific = allTechs.some((tech) => segments.includes(tech));
+  const isArchSpecific = allArchs.some((arch) => segments[0] === arch);
+
+  const matchesTech = selectedTechs.some((tech) => segments.includes(tech));
   const matchesArch = selectedArchs
     .filter((arch) => arch !== "none")
-    .some((arch) => name.includes(arch));
+    .some((arch) => segments[0] === arch);
+
+  if (isTechSpecific && isArchSpecific) {
+    return matchesTech && matchesArch;
+  }
 
   return matchesTech || matchesArch;
 }
