@@ -102,7 +102,7 @@ async function main() {
     const globalChanged =
       report.added.length || report.updated.length || report.removed.length;
 
-    console.log(`\n~/.config synced (v${report.version}):`);
+    console.log(`\n~/Public synced (v${report.version}):`);
     if (report.added.length)
       console.log(`  Added:   ${report.added.join(", ")}`);
     if (report.updated.length)
@@ -206,7 +206,7 @@ async function main() {
           options: [
             {
               value: true,
-              label: "Symlinks to ~/.config",
+              label: "Symlinks to ~/Public",
               hint: "Auto-updates across all projects · not tracked in git",
             },
             {

@@ -69,7 +69,7 @@ AI Workflow → /Users/you/projects/my-app
 │ ● None
 
 ◆ How should agent files be linked to your project?
-│ ● Symlinks to ~/.config - Auto-updates across all projects · not tracked in git
+│ ● Symlinks to ~/Public - Auto-updates across all projects · not tracked in git
 │ ○ Copied locally + relative links - Tracked in git, shareable with team · updated per project
 
 ◆ Select target tools
@@ -130,7 +130,7 @@ Items without a technology or architecture prefix are considered generic and alw
 When using `npx`, the package is cached in a temporary directory (`~/.npm/_npx/<hash>/...`) that changes when the cache is cleared or the version is updated. To prevent symlinks from breaking, the bootstrap script copies all configuration files to a stable location:
 
 ```
-~/.config/mvagnon-agents/config/
+~/Public/mvagnon/agents/config/
 ```
 
 This directory is automatically created and synchronized on every bootstrap run. All symlinks in your projects point to this stable path instead of the ephemeral npx cache.
@@ -143,7 +143,7 @@ To update the stable configuration after installing a new version of the package
 npx mvagnon-agents upgrade
 ```
 
-This synchronizes the config files to `~/.config/mvagnon-agents/config/`, which immediately updates all projects using external symlinks. If run from a project that uses local copies (`.mvagnon/agents/` exists), it also updates the local files.
+This synchronizes the config files to `~/Public/mvagnon/agents/config/`, which immediately updates all projects using external symlinks. If run from a project that uses local copies (`.mvagnon/agents/` exists), it also updates the local files.
 
 ### Migration for Existing Users
 
@@ -157,7 +157,7 @@ npx mvagnon-agents ../my-project
 
 | Mode                              | How it works                                                              | Pros                                          | Cons                             |
 | --------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------- |
-| **External symlinks**             | Tool dirs symlink to `~/.config/mvagnon-agents/`                          | Auto-updates across all projects on `upgrade` | Not tracked in git               |
+| **External symlinks**             | Tool dirs symlink to `~/Public/mvagnon/agents/`                           | Auto-updates across all projects on `upgrade` | Not tracked in git               |
 | **Local copies + relative links** | Files copied to `.mvagnon/agents/`, tool dirs use relative symlinks to it | Tracked in git, shareable with team           | Updated per project on `upgrade` |
 
 In both modes, items listed in `COPIED_RULES`, `COPIED_SKILLS`, or `COPIED_AGENTS` are copied to `.mvagnon/agents/` to allow per-project customization. Config files (`.mcp.json`, `opencode.json`, etc.) are always copied directly.
