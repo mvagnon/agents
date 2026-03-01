@@ -258,9 +258,7 @@ async function main() {
       }
     }
 
-    if (addGitignore) {
-      updateGitignore(targetPath, tool);
-    }
+    updateGitignore(targetPath, tool, !addGitignore);
 
     const toolSummary = [
       stats.rules > 0 ? `Rules:  ${stats.rules} linked` : null,
@@ -272,15 +270,13 @@ async function main() {
         : null,
       ...Object.values(tool.rootFiles).map((f) => `${f}: linked`),
       ...Object.values(tool.configFiles).map((f) => `${f}: copied`),
-      addGitignore ? `.gitignore: entries added` : `.gitignore: not modified`,
+      addGitignore ? `.gitignore: entries added` : `.gitignore: exceptions added`,
     ].filter(Boolean);
 
     summaryLines.push({ tool, lines: toolSummary });
   }
 
-  if (addGitignore) {
-    addGitignoreEntry(targetPath, INTERMEDIATE_DIR, "mvagnon/agents");
-  }
+  addGitignoreEntry(targetPath, INTERMEDIATE_DIR, "mvagnon/agents", !addGitignore);
 
   s.stop("Setup complete");
 
@@ -461,7 +457,7 @@ function copyPath(source, target) {
   }
 }
 
-function updateGitignore(targetPath, tool) {
+function updateGitignore(targetPath, tool, exceptions = false) {
   const gitignorePath = path.join(targetPath, ".gitignore");
   const sectionHeader = `# ${tool.label} Configuration`;
   let content = "";
@@ -475,19 +471,24 @@ function updateGitignore(targetPath, tool) {
     content += "\n";
   }
 
+  const entries = exceptions
+    ? tool.gitignoreEntries.map((e) => `!${e}`)
+    : tool.gitignoreEntries;
+
   content += sectionHeader + "\n";
-  content += tool.gitignoreEntries.join("\n") + "\n";
+  content += entries.join("\n") + "\n";
 
   fs.writeFileSync(gitignorePath, content);
 }
 
-function addGitignoreEntry(targetPath, entry, sectionComment) {
+function addGitignoreEntry(targetPath, entry, sectionComment, exceptions = false) {
   const gitignorePath = path.join(targetPath, ".gitignore");
+  const effectiveEntry = exceptions ? `!${entry}` : entry;
   let content = "";
 
   if (fs.existsSync(gitignorePath)) {
     content = fs.readFileSync(gitignorePath, "utf-8");
-    if (content.split("\n").some((line) => line.trim() === entry)) return;
+    if (content.split("\n").some((line) => line.trim() === effectiveEntry)) return;
     if (content.length > 0 && !content.endsWith("\n")) content += "\n";
     content += "\n";
   }
@@ -495,7 +496,7 @@ function addGitignoreEntry(targetPath, entry, sectionComment) {
   if (sectionComment) {
     content += `# ${sectionComment}\n`;
   }
-  content += entry + "\n";
+  content += effectiveEntry + "\n";
   fs.writeFileSync(gitignorePath, content);
 }
 
