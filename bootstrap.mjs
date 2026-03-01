@@ -2,10 +2,12 @@
 
 import * as p from "@clack/prompts";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { STABLE_BASE, STABLE_CONFIG_DIR, syncConfigToStableDir } from "./lib/sync.mjs";
+import {
+  STABLE_CONFIG_DIR,
+  syncConfigToStableDir,
+} from "./lib/sync.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -72,13 +74,26 @@ const CATEGORIES = ["rules", "skills", "agents"];
 async function main() {
   const targetArg = process.argv[2];
 
+  // Always: sync global config, upgrade local project
+  const syncReport = syncConfigToStableDir(__dirname);
+  const localDir = path.join(process.cwd(), INTERMEDIATE_DIR);
+  const localReport = fs.existsSync(localDir)
+    ? upgradeLocalIntermediateDir(localDir)
+    : null;
+
   if (targetArg === "upgrade") {
-    return runUpgrade();
+    printUpgradeReport(syncReport, localReport);
+    process.exit(0);
   }
 
   if (targetArg === "manage") {
     const { runManage } = await import("./lib/manage.mjs");
-    return runManage({ TOOLS, CATEGORIES, INTERMEDIATE_DIR, STABLE_CONFIG_DIR });
+    return runManage({
+      TOOLS,
+      CATEGORIES,
+      INTERMEDIATE_DIR,
+      STABLE_CONFIG_DIR,
+    });
   }
 
   if (!targetArg) {
@@ -100,10 +115,11 @@ async function main() {
     process.exit(1);
   }
 
-  const syncReport = syncConfigToStableDir(__dirname);
-  console.log(
-    `Config synced to ${STABLE_CONFIG_DIR}/ (v${syncReport.version})`,
-  );
+  // Also upgrade target's local project if different from cwd
+  const targetLocalDir = path.join(targetPath, INTERMEDIATE_DIR);
+  if (targetPath !== process.cwd() && fs.existsSync(targetLocalDir)) {
+    upgradeLocalIntermediateDir(targetLocalDir);
+  }
 
   console.clear();
 
@@ -158,12 +174,8 @@ async function main() {
         initialSelected: true,
       }));
 
-      const note = projectSensitive.length > 0
-        ? ` (${projectSensitive.join(", ")} always included as project-sensitive)`
-        : "";
-
       const selected = await p.multiselect({
-        message: `Select ${category}${note}`,
+        message: `Pick ${category}`,
         options,
         required: false,
       });
@@ -179,8 +191,9 @@ async function main() {
 
   // Step 5: Gitignore question
   const addGitignore = await p.confirm({
-    message: "Add tool directories to .gitignore?",
+    message: "Add agents configuration to .gitignore?",
     initialValue: false,
+    hint: "Srongly recommended on public repositories.",
   });
   if (p.isCancel(addGitignore)) {
     p.cancel("Setup cancelled");
@@ -259,9 +272,7 @@ async function main() {
         : null,
       ...Object.values(tool.rootFiles).map((f) => `${f}: linked`),
       ...Object.values(tool.configFiles).map((f) => `${f}: copied`),
-      addGitignore
-        ? `.gitignore: entries added`
-        : `.gitignore: not modified`,
+      addGitignore ? `.gitignore: entries added` : `.gitignore: not modified`,
     ].filter(Boolean);
 
     summaryLines.push({ tool, lines: toolSummary });
@@ -343,7 +354,11 @@ function installItems(
   let count = 0;
 
   // Install project-sensitive items → INTERMEDIATE_DIR/<category>/
-  const psSourceDir = path.join(STABLE_CONFIG_DIR, category, "project-sensitive");
+  const psSourceDir = path.join(
+    STABLE_CONFIG_DIR,
+    category,
+    "project-sensitive",
+  );
   const psIntermediateDir = path.join(intermediateBase, category);
 
   for (const item of projectSensitiveItems) {
@@ -484,39 +499,21 @@ function addGitignoreEntry(targetPath, entry, sectionComment) {
   fs.writeFileSync(gitignorePath, content);
 }
 
-function runUpgrade() {
-  // Migration: old path → new path
-  const oldBase = process.platform === "darwin"
-    ? path.join("/Users", "Shared", "mvagnon", "agents")
-    : path.join(os.homedir(), ".local", "share", "mvagnon", "agents");
+function printUpgradeReport(syncReport, localReport) {
+  const globalChanged = syncReport.added.length || syncReport.removed.length;
 
-  if (fs.existsSync(oldBase) && !fs.existsSync(STABLE_BASE)) {
-    fs.mkdirSync(path.dirname(STABLE_BASE), { recursive: true });
-    fs.cpSync(oldBase, STABLE_BASE, { recursive: true });
-    console.log(`Migrated config from ${oldBase} to ${STABLE_BASE}`);
-  }
+  console.log(`\nGlobal config (v${syncReport.version}):`);
+  if (syncReport.added.length)
+    console.log(`  Added:   ${syncReport.added.join(", ")}`);
+  if (syncReport.removed.length)
+    console.log(`  Removed: ${syncReport.removed.join(", ")}`);
 
-  const report = syncConfigToStableDir(__dirname);
-  const globalChanged =
-    report.added.length || report.updated.length || report.removed.length;
+  const localChanged =
+    localReport &&
+    (localReport.updated.length > 0 || localReport.removed.length > 0);
 
-  console.log(`\nGlobal config updated (v${report.version}):`);
-  if (report.added.length)
-    console.log(`  Added:   ${report.added.join(", ")}`);
-  if (report.updated.length)
-    console.log(`  Updated: ${report.updated.join(", ")}`);
-  if (report.removed.length)
-    console.log(`  Removed: ${report.removed.join(", ")}`);
-
-  const localDir = path.join(process.cwd(), INTERMEDIATE_DIR);
-  const hasLocalDir = fs.existsSync(localDir);
-  let localChanged = false;
-
-  if (hasLocalDir) {
-    const localReport = upgradeLocalIntermediateDir(localDir);
-    localChanged = localReport.updated.length || localReport.removed.length;
-
-    console.log(`\nLocal project updated:`);
+  if (localReport) {
+    console.log(`\nLocal project:`);
     if (localReport.updated.length)
       console.log(`  Updated: ${localReport.updated.join(", ")}`);
     if (localReport.removed.length)
@@ -526,16 +523,10 @@ function runUpgrade() {
   console.log("");
   if (!globalChanged && !localChanged) {
     console.log("Already up to date.");
-  } else if (globalChanged) {
-    console.log("Global config updated.");
-    if (hasLocalDir && localChanged) {
-      console.log("Local project updated.");
-    }
-  } else if (localChanged) {
-    console.log("Local project updated.");
+  } else {
+    if (globalChanged) console.log("Global config updated.");
+    if (localChanged) console.log("Local project updated.");
   }
-
-  process.exit(0);
 }
 
 function upgradeLocalIntermediateDir(localDir) {

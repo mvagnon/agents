@@ -44,7 +44,7 @@ npx mvagnon-agents upgrade
 
 ### Manage
 
-Add or remove rules, skills and agents from an existing project:
+Add or remove tools, rules, skills and agents from an existing project:
 
 ```bash
 cd my-project
@@ -157,7 +157,7 @@ The package syncs all configuration files to a stable local path:
 | ------------ | --------------------------------- |
 | All platforms | `~/.config/mvagnon/agents/config/` |
 
-This directory is automatically created and synchronized on every bootstrap or upgrade run.
+This directory is automatically created and synchronized on every run (bootstrap, manage, upgrade).
 
 ### Upgrading
 
@@ -165,7 +165,7 @@ This directory is automatically created and synchronized on every bootstrap or u
 npx mvagnon-agents upgrade
 ```
 
-This updates the global config directory and, if run from a bootstrapped project, also updates the generic files in `.mvagnon/agents/generic/`. Project-sensitive files are never overwritten.
+This prints a detailed report of changes. The actual sync (global config + local generic files) happens automatically on every run. Project-sensitive files are never overwritten.
 
 ## Manual Installation
 

@@ -1,7 +1,3 @@
 # Project-Specific Master Rules
 
-- Write;
-- Down;
-- Project;
-- Specific;
-- Rules.
+- You can write all rules that are specific to this project.
