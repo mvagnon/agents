@@ -5,10 +5,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  STABLE_CONFIG_DIR,
-  syncConfigToStableDir,
-} from "./lib/sync.mjs";
-import {
   loadApiKeys,
   saveApiKeys,
   scanPlaceholders,
@@ -17,6 +13,10 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const CONFIG_DIR = path.join(__dirname, "config");
+const VERSION = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "package.json"), "utf-8"),
+).version;
 const INTERMEDIATE_DIR = ".mvagnon-agents";
 
 const TOOLS = {
@@ -80,15 +80,31 @@ const CATEGORIES = ["rules", "skills", "agents"];
 async function main() {
   const targetArg = process.argv[2];
 
-  // Always: sync global config, upgrade local project
-  const syncReport = syncConfigToStableDir(__dirname);
+  // Auto-upgrade local project if it exists
   const localDir = path.join(process.cwd(), INTERMEDIATE_DIR);
   const localReport = fs.existsSync(localDir)
     ? upgradeLocalIntermediateDir(localDir)
     : null;
 
   if (targetArg === "upgrade") {
-    printUpgradeReport(syncReport, localReport);
+    console.clear();
+    const upgradeBanner = [
+      "                                    __                           _     ",
+      " _ ____ ____ _ __ _ _ _  ___ _ _   / /  _ _ __  __ _ _ _ __ _ __| |___ ",
+      "| '  \\ V / _` / _` | ' \\/ _ \\ ' \\ / / || | '_ \\/ _` | '_/ _` / _` / -_)",
+      "|_|_|_\\_/\\__,_\\__, |_||_\\___/_||_/_/ \\_,_| .__/\\__, |_| \\__,_\\__,_\\___|",
+      "              |___/                      |_|   |___/                    ",
+    ];
+    console.log("\x1b[36m" + upgradeBanner.join("\n") + "\x1b[0m");
+    console.log("\x1b[2m  v" + VERSION + "\x1b[0m\n");
+
+    if (!localReport) {
+      p.log.error(
+        `${INTERMEDIATE_DIR}/ not found in current directory. Run bootstrap first.`,
+      );
+      process.exit(1);
+    }
+    printUpgradeReport(localReport);
     process.exit(0);
   }
 
@@ -98,7 +114,8 @@ async function main() {
       TOOLS,
       CATEGORIES,
       INTERMEDIATE_DIR,
-      STABLE_CONFIG_DIR,
+      CONFIG_DIR,
+      VERSION,
     });
   }
 
@@ -142,7 +159,8 @@ async function main() {
     "|_|_|_\\_/\\__,_\\__, |_||_\\___/_||_/_/\\__,_\\__, \\___|_||_\\__/__/",
     "              |___/                      |___/                 ",
   ];
-  console.log("\x1b[36m" + banner.join("\n") + "\x1b[0m\n");
+  console.log("\x1b[36m" + banner.join("\n") + "\x1b[0m");
+  console.log("\x1b[2m  v" + VERSION + "\x1b[0m\n");
 
   p.intro(`AI Workflow → ${targetPath}`);
 
@@ -228,7 +246,7 @@ async function main() {
   const configFilePaths = [];
   for (const tool of selectedTools) {
     for (const src of Object.keys(tool.configFiles)) {
-      configFilePaths.push(path.join(STABLE_CONFIG_DIR, src));
+      configFilePaths.push(path.join(CONFIG_DIR, src));
     }
   }
   const neededKeys = scanPlaceholders(configFilePaths);
@@ -285,7 +303,7 @@ async function main() {
     }
 
     for (const [src, dest] of Object.entries(tool.rootFiles)) {
-      const srcPath = path.join(STABLE_CONFIG_DIR, src);
+      const srcPath = path.join(CONFIG_DIR, src);
       if (fs.existsSync(srcPath)) {
         const intermediateRoot = path.join(targetPath, INTERMEDIATE_DIR);
         fs.mkdirSync(intermediateRoot, { recursive: true });
@@ -302,7 +320,7 @@ async function main() {
     }
 
     for (const [src, dest] of Object.entries(tool.configFiles)) {
-      const srcPath = path.join(STABLE_CONFIG_DIR, src);
+      const srcPath = path.join(CONFIG_DIR, src);
       if (fs.existsSync(srcPath)) {
         const destPath = path.join(targetPath, dest);
         fs.mkdirSync(path.dirname(destPath), { recursive: true });
@@ -325,13 +343,20 @@ async function main() {
         : null,
       ...Object.values(tool.rootFiles).map((f) => `${f}: linked`),
       ...Object.values(tool.configFiles).map((f) => `${f}: copied`),
-      addGitignore ? `.gitignore: entries added` : `.gitignore: exceptions added`,
+      addGitignore
+        ? `.gitignore: entries added`
+        : `.gitignore: exceptions added`,
     ].filter(Boolean);
 
     summaryLines.push({ tool, lines: toolSummary });
   }
 
-  addGitignoreEntry(targetPath, INTERMEDIATE_DIR, "mvagnon-agents", !addGitignore);
+  addGitignoreEntry(
+    targetPath,
+    INTERMEDIATE_DIR,
+    "mvagnon-agents",
+    !addGitignore,
+  );
 
   s.stop("Setup complete");
 
@@ -383,7 +408,7 @@ function scanAvailableItems(category) {
   const projectSensitive = [];
   const generic = [];
 
-  const psDir = path.join(STABLE_CONFIG_DIR, category, "project-sensitive");
+  const psDir = path.join(CONFIG_DIR, category, "project-sensitive");
   if (fs.existsSync(psDir)) {
     for (const entry of fs.readdirSync(psDir)) {
       if (entry === ".gitkeep") continue;
@@ -391,7 +416,7 @@ function scanAvailableItems(category) {
     }
   }
 
-  const genDir = path.join(STABLE_CONFIG_DIR, category, "generic");
+  const genDir = path.join(CONFIG_DIR, category, "generic");
   if (fs.existsSync(genDir)) {
     for (const entry of fs.readdirSync(genDir)) {
       if (entry === ".gitkeep") continue;
@@ -413,11 +438,7 @@ function installItems(
   let count = 0;
 
   // Install project-sensitive items → INTERMEDIATE_DIR/<category>/
-  const psSourceDir = path.join(
-    STABLE_CONFIG_DIR,
-    category,
-    "project-sensitive",
-  );
+  const psSourceDir = path.join(CONFIG_DIR, category, "project-sensitive");
   const psIntermediateDir = path.join(intermediateBase, category);
 
   for (const item of projectSensitiveItems) {
@@ -437,7 +458,7 @@ function installItems(
   }
 
   // Install generic items → INTERMEDIATE_DIR/generic/<category>/
-  const genSourceDir = path.join(STABLE_CONFIG_DIR, category, "generic");
+  const genSourceDir = path.join(CONFIG_DIR, category, "generic");
   const genIntermediateDir = path.join(intermediateBase, "generic", category);
 
   for (const item of genericItems) {
@@ -494,7 +515,12 @@ async function copyWithConfirm(source, target, { spinner, projectRoot } = {}) {
   return true;
 }
 
-async function copyConfigWithReplacements(source, target, apiKeys, { spinner, projectRoot } = {}) {
+async function copyConfigWithReplacements(
+  source,
+  target,
+  apiKeys,
+  { spinner, projectRoot } = {},
+) {
   if (fs.existsSync(target)) {
     try {
       if (!fs.lstatSync(target).isSymbolicLink()) {
@@ -576,14 +602,20 @@ function updateGitignore(targetPath, tool, exceptions = false) {
   fs.writeFileSync(gitignorePath, content);
 }
 
-function addGitignoreEntry(targetPath, entry, sectionComment, exceptions = false) {
+function addGitignoreEntry(
+  targetPath,
+  entry,
+  sectionComment,
+  exceptions = false,
+) {
   const gitignorePath = path.join(targetPath, ".gitignore");
   const effectiveEntry = exceptions ? `!${entry}` : entry;
   let content = "";
 
   if (fs.existsSync(gitignorePath)) {
     content = fs.readFileSync(gitignorePath, "utf-8");
-    if (content.split("\n").some((line) => line.trim() === effectiveEntry)) return;
+    if (content.split("\n").some((line) => line.trim() === effectiveEntry))
+      return;
     if (content.length > 0 && !content.endsWith("\n")) content += "\n";
     content += "\n";
   }
@@ -595,34 +627,19 @@ function addGitignoreEntry(targetPath, entry, sectionComment, exceptions = false
   fs.writeFileSync(gitignorePath, content);
 }
 
-function printUpgradeReport(syncReport, localReport) {
-  const globalChanged = syncReport.added.length || syncReport.removed.length;
+function printUpgradeReport(report) {
+  const changed = report.updated.length > 0 || report.removed.length > 0;
 
-  console.log(`\nGlobal config (v${syncReport.version}):`);
-  if (syncReport.added.length)
-    console.log(`  Added:   ${syncReport.added.join(", ")}`);
-  if (syncReport.removed.length)
-    console.log(`  Removed: ${syncReport.removed.join(", ")}`);
-
-  const localChanged =
-    localReport &&
-    (localReport.updated.length > 0 || localReport.removed.length > 0);
-
-  if (localReport) {
-    console.log(`\nLocal project:`);
-    if (localReport.updated.length)
-      console.log(`  Updated: ${localReport.updated.join(", ")}`);
-    if (localReport.removed.length)
-      console.log(`  Removed: ${localReport.removed.join(", ")}`);
-  }
-
-  console.log("");
-  if (!globalChanged && !localChanged) {
-    console.log("Already up to date.");
+  if (!changed) {
+    p.log.info("Already up to date.");
   } else {
-    if (globalChanged) console.log("Global config updated.");
-    if (localChanged) console.log("Local project updated.");
+    if (report.updated.length)
+      p.log.success(`Updated: ${report.updated.join(", ")}`);
+    if (report.removed.length)
+      p.log.warn(`Removed: ${report.removed.join(", ")}`);
   }
+
+  p.outro(changed ? "Project updated" : "Done");
 }
 
 function upgradeLocalIntermediateDir(localDir) {
@@ -637,7 +654,7 @@ function upgradeLocalIntermediateDir(localDir) {
     const localCatDir = path.join(genericDir, category);
     if (!fs.existsSync(localCatDir)) continue;
 
-    const sourceCatDir = path.join(STABLE_CONFIG_DIR, category, "generic");
+    const sourceCatDir = path.join(CONFIG_DIR, category, "generic");
 
     for (const item of fs.readdirSync(localCatDir)) {
       const localItem = path.join(localCatDir, item);
@@ -666,7 +683,7 @@ function upgradeLocalIntermediateDir(localDir) {
     const localPath = path.join(localDir, entry);
     if (fs.statSync(localPath).isDirectory()) continue;
 
-    const sourceFile = path.join(STABLE_CONFIG_DIR, entry);
+    const sourceFile = path.join(CONFIG_DIR, entry);
     if (!fs.existsSync(sourceFile)) {
       fs.rmSync(localPath, { force: true });
       removed.push(entry);
