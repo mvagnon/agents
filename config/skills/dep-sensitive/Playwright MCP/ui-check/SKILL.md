@@ -1,6 +1,6 @@
 ---
 name: ui-check
-description: Verify a web app or SaaS UI via Playwright MCP — responsive behavior, spacing consistency, font/size coherence, navigation, forms, accessibility, console errors. Use when the user asks to check, audit, test, or review the interface.
+description: Verify a website, a web app or SaaS UI via Playwright MCP — responsive behavior, spacing consistency, font/size coherence, navigation, forms, accessibility, console errors. Use when the user asks to check, audit, test, review the interface or automatically when implementing a large scaled feature.
 ---
 
 # UI Check via Playwright MCP
@@ -8,16 +8,6 @@ description: Verify a web app or SaaS UI via Playwright MCP — responsive behav
 Verify the interface of a running web app or SaaS by navigating views, inspecting the accessibility
 tree, checking visual coherence (spacing, sizing, typography), responsive behavior, interactions,
 and accessibility — all through the Playwright MCP tools.
-
-## Prerequisites
-
-The Playwright MCP server must be configured in Claude Code:
-
-```bash
-claude mcp add playwright npx @playwright/mcp@latest
-```
-
-Confirm the tools are available by running `/mcp` and checking for `playwright` entries.
 
 ## Available MCP Tools Reference
 
@@ -180,68 +170,10 @@ Flag:
 - **Font scaling**: Text too small to read on mobile (< 14px)
 - **Spacing compression**: Padding/margins that don't scale down proportionally
 
-### Step 7 — Produce the report
+### Step 7 — List the issues and fix them
 
-Summarize findings in a structured markdown report:
-
-```markdown
-# UI Verification Report — [App Name]
-
-**URL**: https://app.example.com
-**Date**: YYYY-MM-DD
-**Scope**: Full app / Specific views
-
-## Summary
-
-- Views checked: N
-- Console errors found: N
-- Visual coherence issues: N
-- Accessibility issues: N
-- Responsive issues: N
-
-## Page-by-Page Results
-
-### / (Dashboard)
-
-- Structure: ✅ Logical heading hierarchy
-- Console: ✅ No errors
-- Interactions: ✅ Nav links functional
-- Notes: —
-
-### /settings
-
-- Structure: ⚠️ Missing h1
-- Console: ❌ 1 error (404 on /images/avatar.jpg)
-- Notes: Broken image asset
-
-## Visual Coherence
-
-- Font sizes used: 14px, 16px, 18px, 24px, 32px (✅ consistent scale)
-- Spacing tokens: mostly 8/16/24/32px (⚠️ one section uses 13px margin — likely a bug)
-- Button padding: ✅ consistent across views
-- Card sizes: ⚠️ /pricing cards have different heights
-
-## Responsive Behavior
-
-| Breakpoint   | Overflow    | Stacking | Touch targets | Font size |
-| ------------ | ----------- | -------- | ------------- | --------- |
-| Desktop 1440 | ✅          | ✅       | ✅            | ✅        |
-| Tablet 768   | ✅          | ✅       | ⚠️ small CTA  | ✅        |
-| Mobile 375   | ❌ h-scroll | ✅       | ⚠️ small CTA  | ✅        |
-
-## Accessibility Observations
-
-- [Missing labels, unnamed buttons, empty links, etc.]
-
-## Recommendations
-
-1. Fix horizontal overflow on mobile (likely a container missing `overflow-x: hidden`)
-2. Normalize the 13px margin to 12px or 16px to match spacing scale
-3. Increase CTA button size on tablet/mobile to meet 44px touch target
-4. Add h1 to /settings page
-```
-
-Save the report to `ui-check-report.md` in the project root (or wherever the user prefers).
+1. List all the issues in the form of a list
+2. Fix all the issues as if it were asked by the user
 
 ## Important Conventions
 
@@ -252,8 +184,5 @@ Save the report to `ui-check-report.md` in the project root (or wherever the use
   between navigations. Never reuse a ref from a previous snapshot.
 - **One action at a time**. Take a snapshot → act → take a new snapshot. Do not chain multiple
   clicks without verifying intermediate state.
-- **Report, don't fix**. The purpose of this skill is verification and reporting. Do not modify
-  source code unless the user explicitly asks to fix issues.
 - **Be explicit about limitations**. The accessibility tree does not capture CSS visual bugs
-  (e.g. overlapping elements, wrong colors, broken animations). Note this in the report if
-  relevant.
+  (e.g. overlapping elements, wrong colors, broken animations).
