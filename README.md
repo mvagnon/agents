@@ -12,12 +12,12 @@ Shared configuration and conventions to bootstrap AI coding assistants. One repo
 
 ## Supported Tools
 
-| Tool        | Rules              | Skills              | Root File   | MCP Config           |
-| ----------- | ------------------ | ------------------- | ----------- | -------------------- |
-| Claude Code | `.claude/rules/`   | `.claude/skills/`   | `CLAUDE.md` | `.mcp.json`          |
-| OpenCode    | `.opencode/rules/` | `.opencode/skills/` | `AGENTS.md` | `opencode.json`      |
-| Cursor      | `.cursor/rules/`   | `.cursor/skills/`   | —           | `.cursor/mcp.json`   |
-| Codex       | —                  | `.agents/skills/`   | `AGENTS.md` | `.codex/config.toml` |
+| Tool        | Rules              | Skills / Agents                           | Root File   | MCP Config           |
+| ----------- | ------------------ | ----------------------------------------- | ----------- | -------------------- |
+| Claude Code | `.claude/rules/`   | `.claude/skills/` · `.claude/agents/`     | `CLAUDE.md` | `.mcp.json`          |
+| OpenCode    | `.opencode/rules/` | `.opencode/skills/` · `.opencode/agents/` | `AGENTS.md` | `opencode.json`      |
+| Cursor      | `.cursor/rules/`   | `.cursor/skills/` · `.cursor/agents/`     | —           | `.cursor/mcp.json`   |
+| Codex       | —                  | `.agents/skills/`                         | `AGENTS.md` | `.codex/config.toml` |
 
 ## Compatibility
 
@@ -49,7 +49,7 @@ Updates generic files in `.mvagnon-agents/generic/` to match the latest package 
 
 ### Manage
 
-Add tools, rules and skills to an existing project:
+Add tools, rules, skills and agents to an existing project:
 
 ```bash
 cd my-project
@@ -69,7 +69,7 @@ npx mvagnon-agents keys
 The script prompts you to:
 
 1. **Select target tools** — one or more (Claude Code, OpenCode, Cursor, Codex)
-2. **Pick resources** — rules and skills in a single menu, with category hints
+2. **Pick resources** — rules, skills and agents in a single menu, with category hints
 3. **Add to .gitignore?** — yes to ignore tool directories, no to track everything
 4. **API keys** — prompted automatically for any missing `{ServiceName}` placeholders
 
@@ -107,11 +107,11 @@ AI Workflow → /Users/you/projects/my-app
 ◇ Next Steps
 │ 1. Modify the following project-sensitive files to fit your project:
 │    - rules/project.md
-│ 2. Add rules, skills, MCPs or plugins based on your needs for each tool.
+│ 2. Add rules, skills, agents, MCPs or plugins based on your needs for each tool.
 
 ◇ Available Commands
 │ npx mvagnon-agents <path>    Bootstrap a project with AI tool configs
-│ npx mvagnon-agents manage    Add tools, rules or skills to an existing project
+│ npx mvagnon-agents manage    Add tools, rules, skills or agents to an existing project
 │ npx mvagnon-agents upgrade   Sync generic resources with the latest package version
 │ npx mvagnon-agents keys      Manage API keys for future bootstraps (~/.config/mvagnon/agents/)
 
