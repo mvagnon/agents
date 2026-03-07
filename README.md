@@ -45,7 +45,7 @@ cd my-project
 npx mvagnon-agents upgrade
 ```
 
-Updates generic files in `.mvagnon-agents/generic/` to match the latest package version. Project-sensitive files are never overwritten.
+Updates generic and dep-sensitive files in `.mvagnon-agents/` to match the latest package version. Project-sensitive files are never overwritten. A `manifest.json` tracks which items are auto-updatable.
 
 ### Manage
 
@@ -150,26 +150,28 @@ lib/
 
 ### How It Works
 
-Files are organized into two categories:
+Files are organized into three types:
 
-- **project-sensitive** — copied to `.mvagnon-agents/<category>/` and meant to be edited per project. Never overwritten on upgrade.
-- **generic** — copied to `.mvagnon-agents/generic/<category>/` and kept in sync with the package. Updated on upgrade.
+- **project-sensitive** — meant to be edited per project. Never overwritten on upgrade.
+- **generic** — kept in sync with the package. Updated on upgrade.
+- **dep-sensitive** — like generic, but only relevant when a specific dependency is present. Updated on upgrade.
+
+All items are stored flat in `.mvagnon-agents/<category>/`. A `manifest.json` tracks each item's type so the upgrade mechanism knows which items to sync.
 
 Tool directories (`.claude/rules/`, `.cursor/rules/`, etc.) contain relative symlinks pointing into `.mvagnon-agents/`. This means all tools share the same source files.
 
 ```
 .mvagnon-agents/
 ├── AGENTS.md                                 # Root file
+├── manifest.json                             # Tracks item types for upgrade
 ├── rules/
-│   └── project.md                            # Project-sensitive (editable)
-└── generic/
-    ├── rules/
-    │   ├── nestjs-hexagonal-architecture.md   # Generic (updated via upgrade)
-    │   ├── react-hexagonal-architecture.md
-    │   └── fastapi-hexagonal-architecture.md
-    └── skills/
-        ├── documentation-writer/
-        └── docs-lookup/
+│   ├── project.md                            # Project-sensitive (editable)
+│   ├── nestjs-hexagonal-architecture.md      # Generic (updated via upgrade)
+│   ├── react-hexagonal-architecture.md
+│   └── fastapi-hexagonal-architecture.md
+└── skills/
+    ├── documentation-writer/                 # Generic
+    └── docs-lookup/
 ```
 
 ### Configuration Storage

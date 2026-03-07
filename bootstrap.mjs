@@ -10,6 +10,7 @@ import {
   saveApiKeys,
   scanPlaceholders,
 } from "./lib/apikeys.mjs";
+import { readManifest, writeManifest } from "./lib/manifest.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -219,7 +220,8 @@ async function main() {
   for (const category of CATEGORIES) {
     if (!supportedCategories.has(category)) continue;
 
-    const { projectSensitive, generic } = scanAvailableItems(category);
+    const { projectSensitive, generic, depSensitive } =
+      scanAvailableItems(category);
 
     for (const name of projectSensitive) {
       allResourceOptions.push({
@@ -233,7 +235,14 @@ async function main() {
         value: `gen:${category}:${name}`,
         label: name,
         hint: category,
-        initialSelected: true,
+      });
+    }
+    for (const name of depSensitive) {
+      const dep = name.split("-")[0];
+      allResourceOptions.push({
+        value: `dep:${category}:${name}`,
+        label: name,
+        hint: `${category} · requires ${dep}`,
       });
     }
   }
@@ -254,8 +263,13 @@ async function main() {
       const [type, category, ...nameParts] = val.split(":");
       const name = nameParts.join(":");
       if (!selections[category])
-        selections[category] = { projectSensitive: [], generic: [] };
+        selections[category] = {
+          projectSensitive: [],
+          generic: [],
+          depSensitive: [],
+        };
       if (type === "ps") selections[category].projectSensitive.push(name);
+      else if (type === "dep") selections[category].depSensitive.push(name);
       else selections[category].generic.push(name);
     }
   }
@@ -308,27 +322,33 @@ async function main() {
   const summaryLines = [];
   const processedIntermediateFiles = new Set();
 
+  const manifest = { version: 1, items: {} };
+
   for (const tool of selectedTools) {
     const stats = { rules: 0, skills: 0, agents: 0 };
     const { paths } = tool;
 
-    for (const dir of Object.values(paths)) {
-      fs.mkdirSync(path.join(targetPath, dir), { recursive: true });
-    }
-
     for (const category of CATEGORIES) {
       if (!paths[category] || !selections[category]) continue;
 
-      const { projectSensitive, generic } = selections[category];
+      const { projectSensitive, generic, depSensitive } = selections[category];
 
-      stats[category] = installItems(
+      fs.mkdirSync(path.join(targetPath, paths[category]), { recursive: true });
+
+      const result = installItems(
         category,
         projectSensitive,
         generic,
+        depSensitive || [],
         path.join(targetPath, paths[category]),
         path.join(targetPath, INTERMEDIATE_DIR),
         processedIntermediateFiles,
       );
+      stats[category] = result.count;
+      if (Object.keys(result.manifestEntries).length > 0) {
+        if (!manifest.items[category]) manifest.items[category] = {};
+        Object.assign(manifest.items[category], result.manifestEntries);
+      }
     }
 
     for (const [src, dest] of Object.entries(tool.rootFiles)) {
@@ -380,6 +400,8 @@ async function main() {
     summaryLines.push({ tool, lines: toolSummary });
   }
 
+  writeManifest(path.join(targetPath, INTERMEDIATE_DIR), manifest);
+
   addGitignoreEntry(
     targetPath,
     INTERMEDIATE_DIR,
@@ -425,6 +447,25 @@ async function main() {
     stepNum++;
   }
 
+  const requiredDeps = new Map();
+  for (const category of CATEGORIES) {
+    if (!selections[category]) continue;
+    for (const name of selections[category].depSensitive || []) {
+      const dep = name.split("-")[0];
+      if (!requiredDeps.has(dep)) requiredDeps.set(dep, []);
+      requiredDeps.get(dep).push(name);
+    }
+  }
+  if (requiredDeps.size > 0) {
+    nextSteps.push(
+      `${stepNum}. Ensure the following dependencies are installed in your project:`,
+    );
+    for (const [dep, items] of requiredDeps) {
+      nextSteps.push(`   - ${dep} (used by: ${items.join(", ")})`);
+    }
+    stepNum++;
+  }
+
   nextSteps.push(
     `${stepNum}. Add rules, skills, agents, MCPs or plugins based on your needs for each tool.`,
   );
@@ -448,6 +489,7 @@ async function main() {
 function scanAvailableItems(category) {
   const projectSensitive = [];
   const generic = [];
+  const depSensitive = [];
 
   const psDir = path.join(CONFIG_DIR, category, "project-sensitive");
   if (fs.existsSync(psDir)) {
@@ -465,60 +507,58 @@ function scanAvailableItems(category) {
     }
   }
 
-  return { projectSensitive, generic };
+  const depDir = path.join(CONFIG_DIR, category, "dep-sensitive");
+  if (fs.existsSync(depDir)) {
+    for (const entry of fs.readdirSync(depDir)) {
+      if (entry === ".gitkeep") continue;
+      depSensitive.push(entry);
+    }
+  }
+
+  return { projectSensitive, generic, depSensitive };
 }
 
 function installItems(
   category,
   projectSensitiveItems,
   genericItems,
+  depSensitiveItems,
   toolDir,
   intermediateBase,
   processedIntermediateFiles,
 ) {
   let count = 0;
+  const manifestEntries = {};
+  const intermediateDir = path.join(intermediateBase, category);
 
-  // Install project-sensitive items → INTERMEDIATE_DIR/<category>/
-  const psSourceDir = path.join(CONFIG_DIR, category, "project-sensitive");
-  const psIntermediateDir = path.join(intermediateBase, category);
+  const itemGroups = [
+    { items: projectSensitiveItems, type: "project-sensitive", sourceSubdir: "project-sensitive" },
+    { items: genericItems, type: "generic", sourceSubdir: "generic" },
+    { items: depSensitiveItems, type: "dep-sensitive", sourceSubdir: "dep-sensitive" },
+  ];
 
-  for (const item of projectSensitiveItems) {
-    const srcPath = path.join(psSourceDir, item);
-    if (!fs.existsSync(srcPath)) continue;
+  for (const { items, type, sourceSubdir } of itemGroups) {
+    const sourceDir = path.join(CONFIG_DIR, category, sourceSubdir);
 
-    fs.mkdirSync(psIntermediateDir, { recursive: true });
-    const intermediatePath = path.join(psIntermediateDir, item);
+    for (const item of items) {
+      const srcPath = path.join(sourceDir, item);
+      if (!fs.existsSync(srcPath)) continue;
 
-    if (!processedIntermediateFiles.has(intermediatePath)) {
-      copyPath(srcPath, intermediatePath);
-      processedIntermediateFiles.add(intermediatePath);
+      fs.mkdirSync(intermediateDir, { recursive: true });
+      const intermediatePath = path.join(intermediateDir, item);
+
+      if (!processedIntermediateFiles.has(intermediatePath)) {
+        copyPath(srcPath, intermediatePath);
+        processedIntermediateFiles.add(intermediatePath);
+      }
+
+      createRelativeSymlink(intermediatePath, path.join(toolDir, item));
+      manifestEntries[item] = type;
+      count++;
     }
-
-    createRelativeSymlink(intermediatePath, path.join(toolDir, item));
-    count++;
   }
 
-  // Install generic items → INTERMEDIATE_DIR/generic/<category>/
-  const genSourceDir = path.join(CONFIG_DIR, category, "generic");
-  const genIntermediateDir = path.join(intermediateBase, "generic", category);
-
-  for (const item of genericItems) {
-    const srcPath = path.join(genSourceDir, item);
-    if (!fs.existsSync(srcPath)) continue;
-
-    fs.mkdirSync(genIntermediateDir, { recursive: true });
-    const intermediatePath = path.join(genIntermediateDir, item);
-
-    if (!processedIntermediateFiles.has(intermediatePath)) {
-      copyPath(srcPath, intermediatePath);
-      processedIntermediateFiles.add(intermediatePath);
-    }
-
-    createRelativeSymlink(intermediatePath, path.join(toolDir, item));
-    count++;
-  }
-
-  return count;
+  return { count, manifestEntries };
 }
 
 function resolvePath(inputPath) {
@@ -687,36 +727,45 @@ function upgradeLocalIntermediateDir(localDir) {
   const updated = [];
   const removed = [];
 
-  // Only update generic/ subdirectory — project-sensitive items are never overwritten
-  const genericDir = path.join(localDir, "generic");
+  const manifest = readManifest(localDir);
+  let manifestChanged = false;
 
-  if (fs.existsSync(genericDir)) {
-    for (const category of CATEGORIES) {
-      const localCatDir = path.join(genericDir, category);
-      if (!fs.existsSync(localCatDir)) continue;
+  for (const category of CATEGORIES) {
+    const items = manifest.items[category];
+    if (!items) continue;
 
-      const sourceCatDir = path.join(CONFIG_DIR, category, "generic");
+    for (const [item, type] of Object.entries(items)) {
+      if (type === "project-sensitive") continue;
 
-      for (const item of fs.readdirSync(localCatDir)) {
-        const localItem = path.join(localCatDir, item);
-        const sourceItem = path.join(sourceCatDir, item);
+      const localItem = path.join(localDir, category, item);
+      const sourceItem = path.join(CONFIG_DIR, category, type, item);
 
-        if (!fs.existsSync(sourceItem)) {
+      if (!fs.existsSync(sourceItem)) {
+        if (fs.existsSync(localItem)) {
           fs.rmSync(localItem, { recursive: true, force: true });
-          removed.push(path.join("generic", category, item));
-          continue;
         }
+        delete items[item];
+        manifestChanged = true;
+        removed.push(path.join(category, item));
+        continue;
+      }
 
-        if (fs.statSync(sourceItem).isDirectory()) {
-          if (syncDirectory(sourceItem, localItem)) {
-            updated.push(path.join("generic", category, item));
-          }
-        } else {
-          if (syncFile(sourceItem, localItem)) {
-            updated.push(path.join("generic", category, item));
-          }
+      if (!fs.existsSync(localItem)) continue;
+
+      if (fs.statSync(sourceItem).isDirectory()) {
+        if (syncDirectory(sourceItem, localItem)) {
+          updated.push(path.join(category, item));
+        }
+      } else {
+        if (syncFile(sourceItem, localItem)) {
+          updated.push(path.join(category, item));
         }
       }
+    }
+
+    if (Object.keys(items).length === 0) {
+      delete manifest.items[category];
+      manifestChanged = true;
     }
   }
 
@@ -724,6 +773,7 @@ function upgradeLocalIntermediateDir(localDir) {
   for (const entry of fs.readdirSync(localDir)) {
     const localPath = path.join(localDir, entry);
     if (fs.statSync(localPath).isDirectory()) continue;
+    if (entry === "manifest.json") continue;
 
     const sourceFile = path.join(CONFIG_DIR, entry);
     if (!fs.existsSync(sourceFile)) {
@@ -735,6 +785,10 @@ function upgradeLocalIntermediateDir(localDir) {
     if (syncFile(sourceFile, localPath)) {
       updated.push(entry);
     }
+  }
+
+  if (manifestChanged) {
+    writeManifest(localDir, manifest);
   }
 
   return { updated, removed };
