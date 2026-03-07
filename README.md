@@ -130,9 +130,12 @@ config/
 │       ├── react-hexagonal-architecture.md       # React hexagonal
 │       └── fastapi-hexagonal-architecture.md     # FastAPI hexagonal
 ├── skills/
-│   └── generic/
-│       ├── documentation-writer/                 # Documentation writing skill
-│       └── docs-lookup/                          # External library docs lookup
+│   ├── generic/
+│   │   ├── documentation-writer/                 # Documentation writing skill
+│   │   └── docs-lookup/                          # External library docs lookup
+│   └── dep-sensitive/
+│       └── {dependency}/                         # Folder per dependency (e.g. react/)
+│           └── {skill-name}/                     # Skills requiring that dependency
 ├── agents/                                       # Reserved (empty)
 ├── AGENTS.md                                     # Master rules for all agents
 ├── claudecode.settings.json                      # Claude Code MCP config
@@ -154,7 +157,7 @@ Files are organized into three types:
 
 - **project-sensitive** — meant to be edited per project. Never overwritten on upgrade.
 - **generic** — kept in sync with the package. Updated on upgrade.
-- **dep-sensitive** — like generic, but only relevant when a specific dependency is present. Updated on upgrade.
+- **dep-sensitive** — like generic, but only relevant when a specific dependency is present. Organized as `dep-sensitive/{dependency}/{skill-name}/` in the config directory. Updated on upgrade.
 
 All items are stored flat in `.mvagnon-agents/<category>/`. A `manifest.json` tracks each item's type so the upgrade mechanism knows which items to sync.
 

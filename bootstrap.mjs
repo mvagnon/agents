@@ -237,10 +237,9 @@ async function main() {
         hint: category,
       });
     }
-    for (const name of depSensitive) {
-      const dep = name.split("-")[0];
+    for (const { name, dep } of depSensitive) {
       allResourceOptions.push({
-        value: `dep:${category}:${name}`,
+        value: `dep:${category}:${dep}/${name}`,
         label: name,
         hint: `${category} · requires ${dep}`,
       });
@@ -261,16 +260,20 @@ async function main() {
 
     for (const val of selected || []) {
       const [type, category, ...nameParts] = val.split(":");
-      const name = nameParts.join(":");
+      const rest = nameParts.join(":");
       if (!selections[category])
         selections[category] = {
           projectSensitive: [],
           generic: [],
           depSensitive: [],
         };
-      if (type === "ps") selections[category].projectSensitive.push(name);
-      else if (type === "dep") selections[category].depSensitive.push(name);
-      else selections[category].generic.push(name);
+      if (type === "ps") selections[category].projectSensitive.push(rest);
+      else if (type === "dep") {
+        const lastSlash = rest.lastIndexOf("/");
+        const dep = rest.substring(0, lastSlash);
+        const name = rest.substring(lastSlash + 1);
+        selections[category].depSensitive.push({ name, dep });
+      } else selections[category].generic.push(rest);
     }
   }
 
@@ -450,8 +453,7 @@ async function main() {
   const requiredDeps = new Map();
   for (const category of CATEGORIES) {
     if (!selections[category]) continue;
-    for (const name of selections[category].depSensitive || []) {
-      const dep = name.split("-")[0];
+    for (const { name, dep } of selections[category].depSensitive || []) {
       if (!requiredDeps.has(dep)) requiredDeps.set(dep, []);
       requiredDeps.get(dep).push(name);
     }
@@ -509,9 +511,33 @@ function scanAvailableItems(category) {
 
   const depDir = path.join(CONFIG_DIR, category, "dep-sensitive");
   if (fs.existsSync(depDir)) {
-    for (const entry of fs.readdirSync(depDir)) {
-      if (entry === ".gitkeep") continue;
-      depSensitive.push(entry);
+    const seenNames = new Map();
+    const depEntries = fs.readdirSync(depDir);
+    for (const depEntry of depEntries) {
+      if (depEntry === ".gitkeep") continue;
+      const depEntryPath = path.join(depDir, depEntry);
+      if (!fs.statSync(depEntryPath).isDirectory()) continue;
+
+      // @-prefixed entries are scoped packages: descend one more level
+      const deps = depEntry.startsWith("@")
+        ? fs.readdirSync(depEntryPath)
+            .filter((e) => e !== ".gitkeep" && fs.statSync(path.join(depEntryPath, e)).isDirectory())
+            .map((e) => ({ dep: `${depEntry}/${e}`, depPath: path.join(depEntryPath, e) }))
+        : [{ dep: depEntry, depPath: depEntryPath }];
+
+      for (const { dep, depPath } of deps) {
+        for (const skillEntry of fs.readdirSync(depPath)) {
+          if (skillEntry === ".gitkeep") continue;
+          if (!fs.statSync(path.join(depPath, skillEntry)).isDirectory()) continue;
+
+          if (seenNames.has(skillEntry)) {
+            console.warn(`Warning: skill "${skillEntry}" exists in both "${seenNames.get(skillEntry)}" and "${dep}" — skipping duplicate`);
+            continue;
+          }
+          seenNames.set(skillEntry, dep);
+          depSensitive.push({ name: skillEntry, dep });
+        }
+      }
     }
   }
 
@@ -534,7 +560,6 @@ function installItems(
   const itemGroups = [
     { items: projectSensitiveItems, type: "project-sensitive", sourceSubdir: "project-sensitive" },
     { items: genericItems, type: "generic", sourceSubdir: "generic" },
-    { items: depSensitiveItems, type: "dep-sensitive", sourceSubdir: "dep-sensitive" },
   ];
 
   for (const { items, type, sourceSubdir } of itemGroups) {
@@ -556,6 +581,24 @@ function installItems(
       manifestEntries[item] = type;
       count++;
     }
+  }
+
+  // dep-sensitive: source from config/{category}/dep-sensitive/{dep}/{name}, intermediate stays flat
+  for (const { name, dep } of depSensitiveItems) {
+    const srcPath = path.join(CONFIG_DIR, category, "dep-sensitive", dep, name);
+    if (!fs.existsSync(srcPath)) continue;
+
+    fs.mkdirSync(intermediateDir, { recursive: true });
+    const intermediatePath = path.join(intermediateDir, name);
+
+    if (!processedIntermediateFiles.has(intermediatePath)) {
+      copyPath(srcPath, intermediatePath);
+      processedIntermediateFiles.add(intermediatePath);
+    }
+
+    createRelativeSymlink(intermediatePath, path.join(toolDir, name));
+    manifestEntries[name] = `dep-sensitive:${dep}`;
+    count++;
   }
 
   return { count, manifestEntries };
@@ -738,7 +781,9 @@ function upgradeLocalIntermediateDir(localDir) {
       if (type === "project-sensitive") continue;
 
       const localItem = path.join(localDir, category, item);
-      const sourceItem = path.join(CONFIG_DIR, category, type, item);
+      const sourceItem = type.startsWith("dep-sensitive:")
+        ? path.join(CONFIG_DIR, category, "dep-sensitive", type.slice("dep-sensitive:".length), item)
+        : path.join(CONFIG_DIR, category, type, item);
 
       if (!fs.existsSync(sourceItem)) {
         if (fs.existsSync(localItem)) {
