@@ -80,6 +80,32 @@ const CATEGORIES = ["rules", "skills", "agents"];
 async function main() {
   const targetArg = process.argv[2];
 
+  // For upgrade command, ensure we're running the latest published version
+  if (targetArg === "upgrade" && !process.env.__MVAGNON_SELF_UPDATE) {
+    let latestVersion;
+    try {
+      const res = await fetch(
+        "https://registry.npmjs.org/mvagnon-agents/latest",
+      );
+      const data = await res.json();
+      latestVersion = data.version;
+    } catch {
+      // Network error, proceed with local version
+    }
+    if (latestVersion && latestVersion !== VERSION) {
+      const { execSync } = await import("node:child_process");
+      try {
+        execSync(`npx --yes mvagnon-agents@${latestVersion} upgrade`, {
+          stdio: "inherit",
+          env: { ...process.env, __MVAGNON_SELF_UPDATE: "1" },
+        });
+        process.exit(0);
+      } catch {
+        // Re-exec failed, fall through to local upgrade
+      }
+    }
+  }
+
   // Auto-upgrade local project if it exists
   const localDir = path.join(process.cwd(), INTERMEDIATE_DIR);
   const localReport = fs.existsSync(localDir)
@@ -663,31 +689,32 @@ function upgradeLocalIntermediateDir(localDir) {
 
   // Only update generic/ subdirectory — project-sensitive items are never overwritten
   const genericDir = path.join(localDir, "generic");
-  if (!fs.existsSync(genericDir)) return { updated, removed };
 
-  for (const category of CATEGORIES) {
-    const localCatDir = path.join(genericDir, category);
-    if (!fs.existsSync(localCatDir)) continue;
+  if (fs.existsSync(genericDir)) {
+    for (const category of CATEGORIES) {
+      const localCatDir = path.join(genericDir, category);
+      if (!fs.existsSync(localCatDir)) continue;
 
-    const sourceCatDir = path.join(CONFIG_DIR, category, "generic");
+      const sourceCatDir = path.join(CONFIG_DIR, category, "generic");
 
-    for (const item of fs.readdirSync(localCatDir)) {
-      const localItem = path.join(localCatDir, item);
-      const sourceItem = path.join(sourceCatDir, item);
+      for (const item of fs.readdirSync(localCatDir)) {
+        const localItem = path.join(localCatDir, item);
+        const sourceItem = path.join(sourceCatDir, item);
 
-      if (!fs.existsSync(sourceItem)) {
-        fs.rmSync(localItem, { recursive: true, force: true });
-        removed.push(path.join("generic", category, item));
-        continue;
-      }
-
-      if (fs.statSync(sourceItem).isDirectory()) {
-        if (syncDirectory(sourceItem, localItem)) {
-          updated.push(path.join("generic", category, item));
+        if (!fs.existsSync(sourceItem)) {
+          fs.rmSync(localItem, { recursive: true, force: true });
+          removed.push(path.join("generic", category, item));
+          continue;
         }
-      } else {
-        if (syncFile(sourceItem, localItem)) {
-          updated.push(path.join("generic", category, item));
+
+        if (fs.statSync(sourceItem).isDirectory()) {
+          if (syncDirectory(sourceItem, localItem)) {
+            updated.push(path.join("generic", category, item));
+          }
+        } else {
+          if (syncFile(sourceItem, localItem)) {
+            updated.push(path.join("generic", category, item));
+          }
         }
       }
     }
