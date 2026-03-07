@@ -6,9 +6,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   loadApiKeys,
+  replacePlaceholders,
   saveApiKeys,
   scanPlaceholders,
-  replacePlaceholders,
 } from "./lib/apikeys.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -402,6 +402,9 @@ async function main() {
   nextSteps.push(
     `${stepNum}. Add rules, skills, agents, MCPs or plugins based on your needs for each tool.`,
   );
+  stepNum++;
+
+  nextSteps.push(`${stepNum}. Configure hooks for linting and formatting.`);
 
   p.note(nextSteps.join("\n"), "Next Steps");
 
