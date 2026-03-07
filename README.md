@@ -21,12 +21,12 @@ Shared configuration and conventions to bootstrap AI coding assistants. One repo
 
 ## Compatibility
 
-| Requirement | Details                       |
-| ----------- | ----------------------------- |
-| Node.js     | >= 18                         |
-| macOS       | 12 Monterey and later         |
-| Linux       | Any modern distribution       |
-| Windows     | Not supported (WSL works)     |
+| Requirement | Details                   |
+| ----------- | ------------------------- |
+| Node.js     | >= 18                     |
+| macOS       | 12 Monterey and later     |
+| Linux       | Any modern distribution   |
+| Windows     | Not supported (WSL works) |
 
 ## Getting Started
 
@@ -38,13 +38,18 @@ npx mvagnon-agents ../my-project
 
 ### Upgrade
 
+Run from within a bootstrapped project (requires `.mvagnon-agents/`):
+
 ```bash
+cd my-project
 npx mvagnon-agents upgrade
 ```
 
+Updates generic files in `.mvagnon-agents/generic/` to match the latest package version. Project-sensitive files are never overwritten.
+
 ### Manage
 
-Add or remove tools, rules, skills and agents from an existing project:
+Add tools, rules, skills and agents to an existing project:
 
 ```bash
 cd my-project
@@ -79,8 +84,9 @@ AI Workflow → /Users/you/projects/my-app
 │ [ ] Codex
 
 ◆ Select rules (project.md always included as project-sensitive)
-│ [x] hexagonal-architecture.md
-│ [ ] hexagonal-react-architecture.md
+│ [x] nestjs-hexagonal-architecture.md
+│ [ ] react-hexagonal-architecture.md
+│ [ ] fastapi-hexagonal-architecture.md
 
 ◆ Add tool directories to .gitignore?
 │ ○ No
@@ -112,27 +118,30 @@ Done
 config/
 ├── rules/
 │   ├── project-sensitive/
-│   │   └── project.md                        # Per-project rules (editable)
+│   │   └── project.md                           # Per-project rules (editable)
 │   └── generic/
-│       ├── hexagonal-architecture.md          # Hexagonal architecture
-│       └── hexagonal-react-architecture.md    # Hexagonal + React
+│       ├── nestjs-hexagonal-architecture.md      # NestJS hexagonal
+│       ├── react-hexagonal-architecture.md       # React hexagonal
+│       └── fastapi-hexagonal-architecture.md     # FastAPI hexagonal
 ├── skills/
-│   ├── project-sensitive/                     # Per-project skills
+│   ├── project-sensitive/                        # Per-project skills
 │   └── generic/
-│       └── readme-writing/                    # README generation skill
+│       └── documentation-writer/                 # Documentation writing skill
 ├── agents/
-│   ├── project-sensitive/                     # Per-project agents
-│   └── generic/                               # Shared agents
-├── AGENTS.md                                  # Master rules for all agents
-├── claudecode.settings.json                   # Claude Code MCP config
-├── opencode.settings.json                     # OpenCode MCP config
-├── cursor.mcp.json                            # Cursor MCP config
-└── codex.config.toml                          # Codex MCP config (TOML)
+│   ├── project-sensitive/                        # Per-project agents
+│   └── generic/                                  # Shared agents
+├── AGENTS.md                                     # Master rules for all agents
+├── claudecode.settings.json                      # Claude Code MCP config
+├── opencode.settings.json                        # OpenCode MCP config
+├── cursor.mcp.json                               # Cursor MCP config
+└── codex.config.toml                             # Codex MCP config (TOML)
 
-bootstrap.mjs                                  # Interactive setup script
+bootstrap.mjs                                     # Interactive setup script
 lib/
-├── sync.mjs                                   # Config sync utilities
-└── manage.mjs                                 # Manage subcommand
+├── sync.mjs                                      # Stable base path for API keys
+├── manage.mjs                                    # Manage subcommand
+├── apikeys.mjs                                   # API key storage & placeholder replacement
+└── keys.mjs                                      # Keys subcommand
 ```
 
 ### How It Works
@@ -146,34 +155,30 @@ Tool directories (`.claude/rules/`, `.cursor/rules/`, etc.) contain relative sym
 
 ```
 .mvagnon-agents/
-├── AGENTS.md                              # Root file
+├── AGENTS.md                                 # Root file
 ├── rules/
-│   └── project.md                         # Project-sensitive (editable)
+│   └── project.md                            # Project-sensitive (editable)
 └── generic/
     ├── rules/
-    │   ├── hexagonal-architecture.md      # Generic (updated via upgrade)
-    │   └── hexagonal-react-architecture.md
+    │   ├── nestjs-hexagonal-architecture.md   # Generic (updated via upgrade)
+    │   ├── react-hexagonal-architecture.md
+    │   └── fastapi-hexagonal-architecture.md
     └── skills/
-        └── readme-writing/
+        └── documentation-writer/
 ```
 
-## Stable Configuration Directory
+### Configuration Storage
 
-The package syncs all configuration files to a stable local path:
+API keys are stored in `~/.config/mvagnon/agents/config.json`. This is the only persistent data stored outside the project — configuration files are read directly from the package at runtime.
 
-| Platform     | Path                              |
-| ------------ | --------------------------------- |
-| All platforms | `~/.config/mvagnon/agents/config/` |
+## Publishing
 
-This directory is automatically created and synchronized on every run (bootstrap, manage, upgrade).
-
-### Upgrading
+Publish is triggered automatically via GitHub Actions on tag push:
 
 ```bash
-npx mvagnon-agents upgrade
+npm version patch   # bumps version, creates commit + tag
+git push && git push --tags
 ```
-
-This prints a detailed report of changes. The actual sync (global config + local generic files) happens automatically on every run. Project-sensitive files are never overwritten.
 
 ## Manual Installation
 
