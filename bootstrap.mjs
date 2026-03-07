@@ -478,7 +478,6 @@ async function main() {
   p.note(nextSteps.join("\n"), "Next Steps");
 
   const commands = [
-    "npx mvagnon-agents <path>    Bootstrap a project with AI tool configs",
     "npx mvagnon-agents manage    Add tools, rules, skills or agents to an existing project",
     "npx mvagnon-agents upgrade   Sync generic resources with the latest package version",
     "npx mvagnon-agents keys      Manage API keys for future bootstraps (~/.config/mvagnon/agents/)",
@@ -520,18 +519,29 @@ function scanAvailableItems(category) {
 
       // @-prefixed entries are scoped packages: descend one more level
       const deps = depEntry.startsWith("@")
-        ? fs.readdirSync(depEntryPath)
-            .filter((e) => e !== ".gitkeep" && fs.statSync(path.join(depEntryPath, e)).isDirectory())
-            .map((e) => ({ dep: `${depEntry}/${e}`, depPath: path.join(depEntryPath, e) }))
+        ? fs
+            .readdirSync(depEntryPath)
+            .filter(
+              (e) =>
+                e !== ".gitkeep" &&
+                fs.statSync(path.join(depEntryPath, e)).isDirectory(),
+            )
+            .map((e) => ({
+              dep: `${depEntry}/${e}`,
+              depPath: path.join(depEntryPath, e),
+            }))
         : [{ dep: depEntry, depPath: depEntryPath }];
 
       for (const { dep, depPath } of deps) {
         for (const skillEntry of fs.readdirSync(depPath)) {
           if (skillEntry === ".gitkeep") continue;
-          if (!fs.statSync(path.join(depPath, skillEntry)).isDirectory()) continue;
+          if (!fs.statSync(path.join(depPath, skillEntry)).isDirectory())
+            continue;
 
           if (seenNames.has(skillEntry)) {
-            console.warn(`Warning: skill "${skillEntry}" exists in both "${seenNames.get(skillEntry)}" and "${dep}" — skipping duplicate`);
+            console.warn(
+              `Warning: skill "${skillEntry}" exists in both "${seenNames.get(skillEntry)}" and "${dep}" — skipping duplicate`,
+            );
             continue;
           }
           seenNames.set(skillEntry, dep);
@@ -558,7 +568,11 @@ function installItems(
   const intermediateDir = path.join(intermediateBase, category);
 
   const itemGroups = [
-    { items: projectSensitiveItems, type: "project-sensitive", sourceSubdir: "project-sensitive" },
+    {
+      items: projectSensitiveItems,
+      type: "project-sensitive",
+      sourceSubdir: "project-sensitive",
+    },
     { items: genericItems, type: "generic", sourceSubdir: "generic" },
   ];
 
@@ -782,7 +796,13 @@ function upgradeLocalIntermediateDir(localDir) {
 
       const localItem = path.join(localDir, category, item);
       const sourceItem = type.startsWith("dep-sensitive:")
-        ? path.join(CONFIG_DIR, category, "dep-sensitive", type.slice("dep-sensitive:".length), item)
+        ? path.join(
+            CONFIG_DIR,
+            category,
+            "dep-sensitive",
+            type.slice("dep-sensitive:".length),
+            item,
+          )
         : path.join(CONFIG_DIR, category, type, item);
 
       if (!fs.existsSync(sourceItem)) {

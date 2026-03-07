@@ -1,3 +1,3 @@
-# Project-Specific Master Rules
+# AGENTIC CODING PROJECT-SPECIFIC RULES
 
-- You can write all rules that are specific to this project.
+Nothing here.
