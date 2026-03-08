@@ -87,19 +87,18 @@ AI Workflow → /Users/you/projects/my-app
 │ Rules:      2 linked
 │ Skills:     1 linked
 │ CLAUDE.md:  linked
-│ .mcp.json:  copied (gitignored)
-│ .mvagnon-agents/claudecode.settings.json: .example copied
+│ .mvagnon-agents/.mcp.json.example: copied
 │ .gitignore: not modified
 
 ◇ Cursor Setup
 │ Rules:      2 linked
-│ .cursor/mcp.json: copied (gitignored)
-│ .mvagnon-agents/cursor.mcp.json: .example copied
+│ .mvagnon-agents/mcp.json.example: copied
 │ .gitignore: not modified
 
 ◇ Next Steps
-│ 1. Set the following environment variables for MCP config:
-│    export CONTEXT7_API_KEY=<your-key>
+│ 1. Copy config files and replace the API key placeholders:
+│    Claude Code: cp .mvagnon-agents/.mcp.json.example .mcp.json
+│    Cursor:      cp .mvagnon-agents/mcp.json.example .cursor/mcp.json
 │ 2. Modify the following project-sensitive files to fit your project:
 │    - rules/project.md
 │ 3. Add rules, skills, agents, MCPs or plugins based on your needs for each tool.
@@ -170,7 +169,7 @@ Tool directories (`.claude/rules/`, `.cursor/rules/`, etc.) contain relative sym
 
 ### Configuration Storage
 
-MCP config files use native environment variable syntax (e.g. `${CONTEXT7_API_KEY}`). No secrets are stored outside the project — set the required env vars in your shell profile.
+MCP config files are created from `.example` templates in `.mvagnon-agents/`. Copy them to the correct path and replace the API key placeholders with your actual keys. Config files are always gitignored.
 
 ## Recommended Claude Code Hooks
 
@@ -219,5 +218,5 @@ If you prefer not to use the bootstrap script:
 
 1. Copy the `config/` folder contents to your project
 2. Rename files according to your target tool (see Supported Tools table)
-3. Set the required environment variables (e.g. `CONTEXT7_API_KEY`)
+3. Replace API key placeholders in config files with your actual keys
 4. Update `.gitignore` as needed

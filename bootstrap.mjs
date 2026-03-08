@@ -335,16 +335,11 @@ async function main() {
     for (const [src, dest] of Object.entries(tool.configFiles)) {
       const srcPath = path.join(CONFIG_DIR, src);
       if (fs.existsSync(srcPath)) {
-        const destPath = path.join(targetPath, dest);
-        fs.mkdirSync(path.dirname(destPath), { recursive: true });
-        await copyWithConfirm(srcPath, destPath, {
-          spinner: s,
-          projectRoot: targetPath,
-        });
-        // Also copy template to .mvagnon-agents/ as example
+        // Copy template to .mvagnon-agents/ as .example (named after dest)
         const intermediateRoot = path.join(targetPath, INTERMEDIATE_DIR);
         fs.mkdirSync(intermediateRoot, { recursive: true });
-        const examplePath = path.join(intermediateRoot, src);
+        const exampleName = path.basename(dest) + ".example";
+        const examplePath = path.join(intermediateRoot, exampleName);
         copyPath(srcPath, examplePath);
       }
     }
@@ -360,9 +355,9 @@ async function main() {
         ? `Agents: ${stats.agents} linked`
         : null,
       ...Object.values(tool.rootFiles).map((f) => `${f}: linked`),
-      ...Object.values(tool.configFiles).map((f) => `${f}: copied (gitignored)`),
-      ...Object.keys(tool.configFiles).map(
-        (f) => `${INTERMEDIATE_DIR}/${f}: .example copied`,
+      ...Object.entries(tool.configFiles).map(
+        ([, dest]) =>
+          `${INTERMEDIATE_DIR}/${path.basename(dest)}.example: copied`,
       ),
       addGitignore
         ? `.gitignore: entries added`
@@ -399,30 +394,22 @@ async function main() {
   const nextSteps = [];
   let stepNum = 1;
 
-  // Config file setup step: list copy commands and required env vars
-  const configSteps = [];
+  // Config file setup step: list copy commands per tool
+  const configCopyLines = [];
   for (const tool of selectedTools) {
-    for (const [src, dest] of Object.entries(tool.configFiles)) {
-      const templatePath = path.join(CONFIG_DIR, src);
-      if (!fs.existsSync(templatePath)) continue;
-      const envVars = scanEnvVars(templatePath);
-      configSteps.push({ src, dest, envVars });
+    for (const [, dest] of Object.entries(tool.configFiles)) {
+      const exampleName = path.basename(dest) + ".example";
+      configCopyLines.push(
+        `   ${tool.label}: cp ${INTERMEDIATE_DIR}/${exampleName} ${dest}`,
+      );
     }
   }
-  if (configSteps.length > 0) {
-    const allEnvVars = new Set();
-    for (const { envVars } of configSteps) {
-      for (const v of envVars) allEnvVars.add(v);
-    }
-    if (allEnvVars.size > 0) {
-      nextSteps.push(
-        `${stepNum}. Set the following environment variables for MCP config:`,
-      );
-      for (const v of allEnvVars) {
-        nextSteps.push(`   export ${v}=<your-key>`);
-      }
-      stepNum++;
-    }
+  if (configCopyLines.length > 0) {
+    nextSteps.push(
+      `${stepNum}. Copy config files and replace the API key placeholders:`,
+    );
+    nextSteps.push(...configCopyLines);
+    stepNum++;
   }
 
   if (projectSensitiveFiles.length > 0) {
@@ -637,17 +624,6 @@ async function copyWithConfirm(source, target, { spinner, projectRoot } = {}) {
   return true;
 }
 
-function scanEnvVars(filePath) {
-  const content = fs.readFileSync(filePath, "utf-8");
-  const vars = new Set();
-  const pattern = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
-  let match;
-  while ((match = pattern.exec(content)) !== null) {
-    vars.add(match[1]);
-  }
-  return vars;
-}
-
 function removePath(target) {
   if (
     fs.existsSync(target) ||
@@ -798,6 +774,7 @@ function upgradeLocalIntermediateDir(localDir) {
     const localPath = path.join(localDir, entry);
     if (fs.statSync(localPath).isDirectory()) continue;
     if (entry === "manifest.json") continue;
+    if (entry.endsWith(".example")) continue;
 
     const sourceFile = path.join(CONFIG_DIR, entry);
     if (!fs.existsSync(sourceFile)) {
@@ -808,6 +785,23 @@ function upgradeLocalIntermediateDir(localDir) {
 
     if (syncFile(sourceFile, localPath)) {
       updated.push(entry);
+    }
+  }
+
+  // Add/update .example config files from TOOLS definitions
+  for (const tool of Object.values(TOOLS)) {
+    for (const [src, dest] of Object.entries(tool.configFiles)) {
+      const sourcePath = path.join(CONFIG_DIR, src);
+      if (!fs.existsSync(sourcePath)) continue;
+
+      const exampleName = path.basename(dest) + ".example";
+      const localPath = path.join(localDir, exampleName);
+      if (!fs.existsSync(localPath)) {
+        fs.copyFileSync(sourcePath, localPath);
+        updated.push(exampleName);
+      } else if (syncFile(sourcePath, localPath)) {
+        updated.push(exampleName);
+      }
     }
   }
 
