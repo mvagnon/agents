@@ -2,12 +2,19 @@
 
 ## Rule 0: Skill Check (BLOCKING)
 
-CRITICAL: before writing ANY code/plan, output a `Skill Check` block:
+Before writing ANY code, executing ANY plan, or producing ANY plan:
 
-1. Check your available skills and list those who will be useful to access the request and why;
-2. ALWAYS use those skills:
-   - When writing a plan, make sure to mention the skills to use;
-   - When writing code, use the skills in the intended purpose.
+1. List available skills by scanning skill directories in a `Skill Check` block;
+2. For each skill relevant to the current task:
+   - State the skill name and WHY it applies;
+   - READ the SKILL.md file to load its instructions into context;
+3. In your plan, for each step:
+   - Reference which skill(s) govern it;
+   - Describe HOW the skill applies (which specific instructions/patterns to follow);
+4. During execution, follow the loaded skill instructions for each step;
+5. If no skill is relevant, state "No skills apply" and proceed.
+
+NEVER skip this step. NEVER write code or produce a plan before completing the Skill Check.
 
 ## Code Rules
 
