@@ -2,13 +2,12 @@
 
 ## Rule 0: Skill Check (BLOCKING)
 
-CRITICAL: before writing ANY code, output a `Skill Check` block:
+CRITICAL: before writing ANY code/plan, output a `Skill Check` block:
 
-1. List MCP tools you will use (Context7, Exa, etc.) and how;
-2. Check your available skills and list those who will be useful to access the request;
-
-DO NOT write code until Skill Check is complete.
-You don't need any confirmation, you can go straight into the work, using the resources you just listed.
+1. Check your available skills and list those who will be useful to access the request and why;
+2. ALWAYS use those skills:
+   - When writing a plan, make sure to mention the skills to use;
+   - When writing code, use the skills in the intended purpose.
 
 ## Code Rules
 
