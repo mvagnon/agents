@@ -299,7 +299,7 @@ async function main() {
 
       fs.mkdirSync(path.join(targetPath, paths[category]), { recursive: true });
 
-      const result = installItems(
+      const result = await installItems(
         category,
         projectSensitive,
         generic,
@@ -307,6 +307,7 @@ async function main() {
         path.join(targetPath, paths[category]),
         path.join(targetPath, INTERMEDIATE_DIR),
         processedIntermediateFiles,
+        { spinner: s, projectRoot: targetPath },
       );
       stats[category] = result.count;
       if (Object.keys(result.manifestEntries).length > 0) {
@@ -525,7 +526,7 @@ function scanAvailableItems(category) {
   return { projectSensitive, generic, depSensitive };
 }
 
-function installItems(
+async function installItems(
   category,
   projectSensitiveItems,
   genericItems,
@@ -533,6 +534,7 @@ function installItems(
   toolDir,
   intermediateBase,
   processedIntermediateFiles,
+  { spinner, projectRoot } = {},
 ) {
   let count = 0;
   const manifestEntries = {};
@@ -558,7 +560,22 @@ function installItems(
       const intermediatePath = path.join(intermediateDir, item);
 
       if (!processedIntermediateFiles.has(intermediatePath)) {
-        copyPath(srcPath, intermediatePath);
+        if (type === "project-sensitive") {
+          const copied = await copyWithConfirm(srcPath, intermediatePath, {
+            spinner,
+            projectRoot,
+          });
+          if (!copied) {
+            // User chose not to overwrite; still symlink + track existing file
+            createRelativeSymlink(intermediatePath, path.join(toolDir, item));
+            manifestEntries[item] = type;
+            count++;
+            processedIntermediateFiles.add(intermediatePath);
+            continue;
+          }
+        } else {
+          copyPath(srcPath, intermediatePath);
+        }
         processedIntermediateFiles.add(intermediatePath);
       }
 
