@@ -1,22 +1,38 @@
 # AGENTIC CODING MASTER RULES
 
-## Rule 0: Skill Check (BLOCKING)
+## Rule 0: Documentation Lookup (BLOCKING before code generation)
 
-Before writing ANY code, executing ANY plan, or producing ANY plan:
+Before writing or modifying code that uses a library API, resolve the correct signatures and behavior from documentation.
+Skip this rule only for code with no external dependency.
 
-1. List available skills by scanning skill directories in a `Skill Check` block;
-2. For each skill relevant to the current task:
-   - State the skill name and WHY it applies;
-   - READ the SKILL.md file to load its instructions into context;
-3. In your plan, for each step:
-   - Reference which skill(s) govern it;
-   - Describe HOW the skill applies (which specific instructions/patterns to follow);
-4. During execution, follow the loaded skill instructions for each step;
-5. If no skill is relevant, state "No skills apply" and proceed.
+### Lookup chain
 
-NEVER skip this step. NEVER write code or produce a plan before completing the Skill Check.
+1. **Context7 (primary)**
+   - `resolve-library-id` → `get-library-docs` with the resolved ID.
+   - If docs answer the question → use them, cite the source in a
+     code comment, stop.
 
-## Code Rules
+2. **Brave Search (fallback)**
+   - Trigger: Context7 returned nothing, or the question is not
+     library-specific (e.g. architecture pattern, OS behavior, RFC).
+   - Query: `<library> <version> <specific method/concept>` (3-8 words).
+   - Prefer: official docs > GitHub issues/PRs > Stack Overflow > blog posts.
+   - If snippets are insufficient, fetch the full page.
+
+3. **Conflict resolution**
+   - When sources disagree, favor the most recent official source.
+   - Flag the discrepancy in a code comment or commit message.
+
+### Scope control
+
+| Confidence | External API?                       | Action                           |
+| ---------- | ----------------------------------- | -------------------------------- |
+| High       | No                                  | Skip lookup, proceed             |
+| High       | Yes, non-critical                   | Lookup recommended, not blocking |
+| Any        | Auth / payments / security / crypto | **Always lookup, no exceptions** |
+| Low        | Any                                 | **Always lookup**                |
+
+## Coding Rules
 
 - Separate logical blocks (imports, hooks, statements, functions, etc.) with one blank line;
 - TSDoc/docstrings on exported functions/classes/types;
@@ -24,8 +40,3 @@ NEVER skip this step. NEVER write code or produce a plan before completing the S
 - NO logs unless explicitly requested;
 - ALWAYS apply DRY, KISS and SOLID principles;
 - DO NOT imitate existing code patterns (logs, comments, spacing, etc.).
-
-## Checklist
-
-- Comply to `Rule 0`
-- Respect the `Code Rules`

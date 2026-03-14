@@ -1,7 +1,7 @@
 ---
 name: documentation-writer
 description: Use to write the README.md documentation for a projet, invoke it every time you make significant codebase changes or uppon request.
-user-invocable: false
+user-invocable: true
 ---
 
 Analyze this codebase and update (or create) the README.md file. Follow these steps:

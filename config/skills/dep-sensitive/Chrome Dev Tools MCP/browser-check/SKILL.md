@@ -1,7 +1,7 @@
 ---
 name: browser-check
-description: Verify that a frontend feature implementation is correct by inspecting it in a real browser via Chrome DevTools MCP. Checks visual design, console errors, and functional correctness — then iterates fixes until everything passes. Use this skill whenever the user says "verify", "check in browser", "does it look right", "test the feature", "QA this", "check for errors", "validate the UI", or after implementing any frontend feature that should be visually or functionally verified. Also trigger when the user wants to compare actual rendering against expected behavior, catch runtime errors, or confirm a fix worked.
-user-invocable: false
+description: Verify that a frontend feature implementation is correct by inspecting it in a real browser via Chrome DevTools MCP. Checks visual design, console errors, and functional correctness — then iterates fixes until everything passes.
+user-invocable: true
 ---
 
 # Feature Verification
