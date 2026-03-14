@@ -34,9 +34,21 @@ Skip this rule only for code with no external dependency.
 
 ## Coding Rules
 
+### **ABSOLUTELY CRITICAL**
+
+- **ALWAYS** ensure that the produced code is:
+  - Elegant (search for a simple and clean solution, often the one described _Context7_);
+  - Scalable (code is reused, codebase is clean and ordered);
+  - Documented (TSDoc/docstrings on exported functions/classes/types and on complex logic).
+
+### _Important_
+
 - Separate logical blocks (imports, hooks, statements, functions, etc.) with one blank line;
-- TSDoc/docstrings on exported functions/classes/types;
 - NO comments on trivial logic; ALWAYS comment complex logic only (regex, etc.);
-- NO logs unless explicitly requested;
-- ALWAYS apply DRY, KISS and SOLID principles;
+- NO logs unless explicitly requested.
+
+### Good to have
+
 - DO NOT imitate existing code patterns (logs, comments, spacing, etc.).
+
+> **Important note**: ALWAYS make sure that the "ABSOLUTELY CRITICAL" rules are applied. Those are essential to maintain a good quality codebase.
