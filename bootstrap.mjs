@@ -82,17 +82,7 @@ async function main() {
 
   const selectedTools = selectedToolKeys.map((key) => TOOLS[key]);
 
-  // Step 2: Gitignore question
-  const addGitignore = await p.confirm({
-    message: "Add agent configs to .gitignore?",
-    initialValue: false,
-  });
-  if (p.isCancel(addGitignore)) {
-    p.cancel("Setup cancelled");
-    process.exit(0);
-  }
-
-  // Step 3: Create tool instances
+  // Step 2: Create tool instances
   const s = p.spinner();
   s.start("Creating tool instances");
 
@@ -100,10 +90,6 @@ async function main() {
 
   for (const tool of selectedTools) {
     const lines = createToolInstance(targetPath, tool);
-
-    updateGitignore(targetPath, tool, addGitignore);
-    lines.push(".gitignore: updated");
-
     summaryLines.push({ tool, lines });
   }
 
@@ -119,12 +105,9 @@ async function main() {
     .map((t) => `  ${t.label}: ${t.configFile}`);
   if (configLines.length > 0) {
     p.note(
-      [
-        "Don't forget to configure your MCP servers in:",
-        ...configLines,
-        "",
-        "These files are always gitignored for security.",
-      ].join("\n"),
+      ["Don't forget to configure your MCP servers in:", ...configLines].join(
+        "\n",
+      ),
       "MCP Configuration",
     );
   }
@@ -185,42 +168,6 @@ function renderConfigTemplate(tool) {
     return JSON.stringify(tpl, null, 2) + "\n";
   }
   return tpl;
-}
-
-/**
- * Updates .gitignore for a tool.
- * Config/MCP files are ALWAYS gitignored.
- * Tool directories and root files are gitignored only if `ignoreAll` is true.
- */
-function updateGitignore(projectRoot, tool, ignoreAll) {
-  const gitignorePath = path.join(projectRoot, ".gitignore");
-  const sectionHeader = `# ${tool.label} Configuration`;
-  let content = "";
-
-  if (fs.existsSync(gitignorePath)) {
-    content = fs.readFileSync(gitignorePath, "utf-8");
-    if (content.includes(sectionHeader)) return;
-    if (content.length > 0 && !content.endsWith("\n")) content += "\n";
-    content += "\n";
-  }
-
-  const entries = [];
-
-  if (ignoreAll) {
-    entries.push(...tool.gitignoreEntries);
-  }
-
-  // Config file is ALWAYS gitignored
-  if (tool.configFile) {
-    entries.push(tool.configFile);
-  }
-
-  if (entries.length === 0) return;
-
-  content += sectionHeader + "\n";
-  content += entries.join("\n") + "\n";
-
-  fs.writeFileSync(gitignorePath, content);
 }
 
 function resolvePath(inputPath) {

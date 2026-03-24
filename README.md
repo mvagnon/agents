@@ -39,7 +39,6 @@ npx mvagnon-agents ../my-project
 The script prompts you to:
 
 1. **Select target tools** — one or more (Claude Code, OpenCode, Cursor, Codex)
-2. **Add to .gitignore?** — yes to ignore all tool directories and root files; no to track them
 
 Each tool gets:
 
@@ -47,7 +46,7 @@ Each tool gets:
 - Empty root file (CLAUDE.md, AGENTS.md)
 - Pre-filled config file with empty MCP structure (.mcp.json, opencode.json, etc.)
 
-Config/MCP files are **always gitignored** regardless of your choice (they contain API keys). Edit everything manually to fit your project.
+Edit everything manually to fit your project.
 
 ```
 AI Workflow → /Users/you/projects/my-app
@@ -58,30 +57,23 @@ AI Workflow → /Users/you/projects/my-app
 │ [ ] OpenCode
 │ [ ] Codex
 
-◆ Add agent configs to .gitignore?
-│ ○ No
-
 ◇ Claude Code Setup
 │ .claude/rules/:  created
 │ .claude/skills/: created
 │ .claude/agents/: created
 │ CLAUDE.md:       created
 │ .mcp.json:       created
-│ .gitignore:      updated
 
 ◇ Cursor Setup
 │ .cursor/rules/:   created
 │ .cursor/skills/:  created
 │ .cursor/agents/:  created
 │ .cursor/mcp.json: created
-│ .gitignore:       updated
 
 ◇ MCP Configuration
 │ Don't forget to configure your MCP servers in:
 │   Claude Code: .mcp.json
 │   Cursor:      .cursor/mcp.json
-│
-│ These files are always gitignored for security.
 
 Done
 ```
@@ -97,11 +89,11 @@ npx mvagnon-agents propagate
 
 The script:
 
-1. Detects which tools are already configured
+1. Detects which tools are already configured (requires **both** the tool directory and root file to be present)
 2. If multiple exist, asks which one to propagate from
 3. Proposes all tools that do **not** yet have an instance as destinations
 4. Creates symlinks for root file and directory contents (rules, skills, agents)
-5. Creates empty config/MCP files (always gitignored)
+5. Creates empty config/MCP files
 
 ```
 Propagate config → /Users/you/projects/my-app
@@ -119,21 +111,17 @@ Propagate config → /Users/you/projects/my-app
 │ .opencode/skills/: 1 item(s) symlinked → .claude/skills/
 │ .opencode/agents/: created (empty)
 │ opencode.json:     created (empty structure)
-│ .gitignore:        entries added
 
 ◇ Cursor
 │ .cursor/rules/:   3 item(s) symlinked → .claude/rules/
 │ .cursor/skills/:  1 item(s) symlinked → .claude/skills/
 │ .cursor/agents/:  created (empty)
 │ .cursor/mcp.json: created (empty structure)
-│ .gitignore:       entries added
 
 ◇ MCP Configuration
 │ Don't forget to configure your MCP servers in:
 │   OpenCode: opencode.json
 │   Cursor:   .cursor/mcp.json
-│
-│ These files are always gitignored for security.
 
 Done
 ```

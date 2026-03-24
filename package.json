@@ -1,6 +1,6 @@
 {
   "name": "mvagnon-agents",
-  "version": "8.0.0",
+  "version": "8.0.1",
   "description": "Bootstrap bare AI coding assistant instances.",
   "type": "module",
   "bin": {
