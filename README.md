@@ -8,23 +8,11 @@
 
 # AI Workflow
 
-Shared configuration and conventions to bootstrap AI coding assistants. One repo, one command — every tool gets the same rules, skills, and MCP servers.
-
-## Global MCP Stack
-
-Every bootstrapped project ships with three MCP servers configured for all supported tools:
-
-| MCP Server | Purpose              | Provider                                                                                                             |
-| ---------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| GitHub     | Version management   | [GitHub Copilot MCP](https://api.githubcopilot.com/mcp)                                                              |
-| Context7   | Documentation lookup | [Context7](https://mcp.context7.com/mcp)                                                                             |
-| Brave      | Web browsing         | [@modelcontextprotocol/server-brave-search](https://www.npmjs.com/package/@modelcontextprotocol/server-brave-search) |
-
-MCP config templates are generated per tool (see Configuration Storage below). Copy the `.example` file and replace API key placeholders with your actual keys.
+Bootstrap bare AI coding assistant instances. One command — every tool gets its directory structure, empty root file, and pre-filled config file, ready for manual configuration.
 
 ## Supported Tools
 
-| Tool        | Rules              | Skills / Agents                           | Root File   | MCP Config           |
+| Tool        | Rules              | Skills / Agents                           | Root File   | Config File          |
 | ----------- | ------------------ | ----------------------------------------- | ----------- | -------------------- |
 | Claude Code | `.claude/rules/`   | `.claude/skills/` · `.claude/agents/`     | `CLAUDE.md` | `.mcp.json`          |
 | OpenCode    | `.opencode/rules/` | `.opencode/skills/` · `.opencode/agents/` | `AGENTS.md` | `opencode.json`      |
@@ -42,39 +30,24 @@ MCP config templates are generated per tool (see Configuration Storage below). C
 
 ## Getting Started
 
-### Bootstrap
+### Init
 
 ```bash
 npx mvagnon-agents ../my-project
 ```
 
-### Upgrade
-
-Run from within a bootstrapped project (requires `.mvagnon-agents/`):
-
-```bash
-cd my-project
-npx mvagnon-agents upgrade
-```
-
-Updates generic and dep-sensitive files in `.mvagnon-agents/` to match the latest package version. Project-sensitive files are never overwritten. A `manifest.json` tracks which items are auto-updatable.
-
-### Manage
-
-Add tools, rules, skills and agents to an existing project:
-
-```bash
-cd my-project
-npx mvagnon-agents manage
-```
-
-### Interactive Walkthrough
-
 The script prompts you to:
 
 1. **Select target tools** — one or more (Claude Code, OpenCode, Cursor, Codex)
-2. **Pick resources** — rules, skills and agents in a single menu, with category hints
-3. **Add to .gitignore?** — yes to ignore tool directories, no to track everything
+2. **Add to .gitignore?** — yes to ignore all tool directories and root files; no to track them
+
+Each tool gets:
+
+- Empty directory structure (rules/, skills/, agents/)
+- Empty root file (CLAUDE.md, AGENTS.md)
+- Pre-filled config file with empty MCP structure (.mcp.json, opencode.json, etc.)
+
+Config/MCP files are **always gitignored** regardless of your choice (they contain API keys). Edit everything manually to fit your project.
 
 ```
 AI Workflow → /Users/you/projects/my-app
@@ -85,39 +58,82 @@ AI Workflow → /Users/you/projects/my-app
 │ [ ] OpenCode
 │ [ ] Codex
 
-◆ Pick resources
-│ [x] project.md                            (rules · project-sensitive)
-│ [x] nestjs-hexagonal-architecture.md      (rules)
-│ [ ] react-hexagonal-architecture.md       (rules)
-│ [ ] fastapi-hexagonal-architecture.md     (rules)
-│ [x] documentation-writer                  (skills)
-
-◆ Add agents configuration to .gitignore?
+◆ Add agent configs to .gitignore?
 │ ○ No
 
 ◇ Claude Code Setup
-│ Rules:      2 linked
-│ Skills:     1 linked
-│ CLAUDE.md:  linked
-│ .mvagnon-agents/.mcp.json.example: copied
-│ .gitignore: not modified
+│ .claude/rules/:  created
+│ .claude/skills/: created
+│ .claude/agents/: created
+│ CLAUDE.md:       created
+│ .mcp.json:       created
+│ .gitignore:      updated
 
 ◇ Cursor Setup
-│ Rules:      2 linked
-│ .mvagnon-agents/mcp.json.example: copied
-│ .gitignore: not modified
+│ .cursor/rules/:   created
+│ .cursor/skills/:  created
+│ .cursor/agents/:  created
+│ .cursor/mcp.json: created
+│ .gitignore:       updated
 
-◇ Next Steps
-│ 1. Copy config files and replace the API key placeholders:
-│    Claude Code: cp .mvagnon-agents/.mcp.json.example .mcp.json
-│    Cursor:      cp .mvagnon-agents/mcp.json.example .cursor/mcp.json
-│ 2. Modify the following project-sensitive files to fit your project:
-│    - rules/project.md
-│ 3. Add rules, skills, agents, MCPs or plugins based on your needs for each tool.
+◇ MCP Configuration
+│ Don't forget to configure your MCP servers in:
+│   Claude Code: .mcp.json
+│   Cursor:      .cursor/mcp.json
+│
+│ These files are always gitignored for security.
 
-◇ Available Commands
-│ npx mvagnon-agents manage    Add tools, rules, skills or agents to an existing project
-│ npx mvagnon-agents upgrade   Sync generic resources with the latest package version
+Done
+```
+
+### Propagate
+
+Propagate one tool's configuration to other tools using **symlinks** (root file, rules, skills, agents) so all tools share the same source of truth. Config/MCP files are created empty (not symlinked).
+
+```bash
+cd my-project
+npx mvagnon-agents propagate
+```
+
+The script:
+
+1. Detects which tools are already configured
+2. If multiple exist, asks which one to propagate from
+3. Proposes all tools that do **not** yet have an instance as destinations
+4. Creates symlinks for root file and directory contents (rules, skills, agents)
+5. Creates empty config/MCP files (always gitignored)
+
+```
+Propagate config → /Users/you/projects/my-app
+
+◆ Select source tool to propagate from
+│ ● Claude Code
+
+◆ Select destination tools
+│ [x] OpenCode
+│ [x] Cursor
+
+◇ OpenCode
+│ AGENTS.md:         symlinked → CLAUDE.md
+│ .opencode/rules/:  3 item(s) symlinked → .claude/rules/
+│ .opencode/skills/: 1 item(s) symlinked → .claude/skills/
+│ .opencode/agents/: created (empty)
+│ opencode.json:     created (empty structure)
+│ .gitignore:        entries added
+
+◇ Cursor
+│ .cursor/rules/:   3 item(s) symlinked → .claude/rules/
+│ .cursor/skills/:  1 item(s) symlinked → .claude/skills/
+│ .cursor/agents/:  created (empty)
+│ .cursor/mcp.json: created (empty structure)
+│ .gitignore:       entries added
+
+◇ MCP Configuration
+│ Don't forget to configure your MCP servers in:
+│   OpenCode: opencode.json
+│   Cursor:   .cursor/mcp.json
+│
+│ These files are always gitignored for security.
 
 Done
 ```
@@ -125,63 +141,11 @@ Done
 ## Project Structure
 
 ```
-config/
-├── rules/
-│   ├── project-sensitive/
-│   │   └── project.md                           # Per-project rules (editable)
-│   └── generic/
-│       ├── nestjs-hexagonal-architecture.md      # NestJS hexagonal
-│       ├── react-hexagonal-architecture.md       # React hexagonal
-│       └── fastapi-hexagonal-architecture.md     # FastAPI hexagonal
-├── skills/
-│   ├── generic/
-│   │   ├── documentation-writer/                 # Documentation writing skill
-│   │   └── docs-lookup/                          # External library docs lookup
-│   └── dep-sensitive/
-│       └── Chrome Dev Tools MCP/
-│           └── browser-check/                    # UI verification via Chrome DevTools
-├── agents/                                       # Reserved (empty)
-├── AGENTS.md                                     # Master rules for all agents
-├── claudecode.settings.json                      # Claude Code MCP config
-├── opencode.settings.json                        # OpenCode MCP config
-├── cursor.mcp.json                               # Cursor MCP config
-└── codex.config.toml                             # Codex MCP config (TOML)
-
-bootstrap.mjs                                     # Interactive setup script
+bootstrap.mjs          # Interactive setup script
+tools.json             # Tool definitions and config templates
 lib/
-├── manage.mjs                                    # Manage subcommand
-└── manifest.mjs                                  # Manifest read/write helpers
+└── propagate.mjs      # Propagate subcommand
 ```
-
-### How It Works
-
-Files are organized into three types:
-
-- **project-sensitive** — meant to be edited per project. Never overwritten on upgrade.
-- **generic** — kept in sync with the package. Updated on upgrade.
-- **dep-sensitive** — like generic, but only relevant when a specific dependency is present. Organized as `dep-sensitive/{dependency}/{skill-name}/` in the config directory. Updated on upgrade.
-
-All items are stored flat in `.mvagnon-agents/<category>/`. A `manifest.json` tracks each item's type so the upgrade mechanism knows which items to sync.
-
-Tool directories (`.claude/rules/`, `.cursor/rules/`, etc.) contain relative symlinks pointing into `.mvagnon-agents/`. This means all tools share the same source files.
-
-```
-.mvagnon-agents/
-├── AGENTS.md                                 # Root file
-├── manifest.json                             # Tracks item types for upgrade
-├── rules/
-│   ├── project.md                            # Project-sensitive (editable)
-│   ├── nestjs-hexagonal-architecture.md      # Generic (updated via upgrade)
-│   ├── react-hexagonal-architecture.md
-│   └── fastapi-hexagonal-architecture.md
-└── skills/
-    ├── documentation-writer/                 # Generic
-    └── docs-lookup/
-```
-
-### Configuration Storage
-
-MCP config files are created from `.example` templates in `.mvagnon-agents/`. Copy them to the correct path and replace the API key placeholders with your actual keys. Config files are always gitignored.
 
 ## Recommended Claude Code Hooks
 
@@ -223,12 +187,3 @@ Claude Code supports `PostToolUse` hooks that automatically lint and format file
 - **Node.js** (for `npx eslint` and `npx prettier`)
 - **uv** (for `uvx ruff`) — install via `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - Project-level ESLint and Prettier configs (`.eslintrc.*` / `eslint.config.*`, `.prettierrc*`) for JS/TS rules to take effect
-
-## Manual Installation
-
-If you prefer not to use the bootstrap script:
-
-1. Copy the `config/` folder contents to your project
-2. Rename files according to your target tool (see Supported Tools table)
-3. Replace API key placeholders in config files with your actual keys
-4. Update `.gitignore` as needed

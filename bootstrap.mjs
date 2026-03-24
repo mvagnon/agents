@@ -4,154 +4,42 @@ import * as p from "@clack/prompts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readManifest, writeManifest } from "./lib/manifest.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const CONFIG_DIR = path.join(__dirname, "config");
-const VERSION = JSON.parse(
+const { version: VERSION } = JSON.parse(
   fs.readFileSync(path.join(__dirname, "package.json"), "utf-8"),
-).version;
-const INTERMEDIATE_DIR = ".mvagnon-agents";
+);
 
-const TOOLS = {
-  claudecode: {
-    value: "claudecode",
-    label: "Claude Code",
-    hint: "Anthropic's CLI for Claude",
-    paths: {
-      rules: ".claude/rules",
-      skills: ".claude/skills",
-      agents: ".claude/agents",
-    },
-    rootFiles: { "AGENTS.md": "CLAUDE.md" },
-    configFiles: { "claudecode.settings.json": ".mcp.json" },
-    gitignoreEntries: [".claude", "CLAUDE.md"],
-    configGitignoreEntries: [".mcp.json"],
-  },
+const toolsConfig = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "tools.json"), "utf-8"),
+);
 
-  opencode: {
-    value: "opencode",
-    label: "OpenCode",
-    hint: "Open-source AI coding assistant",
-    paths: {
-      rules: ".opencode/rules",
-      skills: ".opencode/skills",
-      agents: ".opencode/agents",
-    },
-    rootFiles: { "AGENTS.md": "AGENTS.md" },
-    configFiles: { "opencode.settings.json": "opencode.json" },
-    gitignoreEntries: [".opencode", "AGENTS.md"],
-    configGitignoreEntries: ["opencode.json"],
-  },
+const CATEGORIES = toolsConfig.categories;
 
-  cursor: {
-    value: "cursor",
-    label: "Cursor",
-    hint: "AI-powered code editor",
-    paths: {
-      rules: ".cursor/rules",
-      skills: ".cursor/skills",
-      agents: ".cursor/agents",
-    },
-    rootFiles: {},
-    configFiles: { "cursor.mcp.json": ".cursor/mcp.json" },
-    gitignoreEntries: [".cursor"],
-    configGitignoreEntries: [".cursor/mcp.json"],
-  },
-
-  codex: {
-    value: "codex",
-    label: "Codex",
-    hint: "OpenAI's coding agent CLI",
-    paths: {
-      skills: ".agents/skills",
-    },
-    rootFiles: { "AGENTS.md": "AGENTS.md" },
-    configFiles: { "codex.config.toml": ".codex/config.toml" },
-    gitignoreEntries: [".codex", ".agents", "AGENTS.md"],
-    configGitignoreEntries: [".codex/config.toml"],
-  },
-};
-
-const CATEGORIES = ["rules", "skills", "agents"];
+/** Tool definitions keyed by ID, with `value` injected from the key. */
+const TOOLS = Object.fromEntries(
+  Object.entries(toolsConfig.tools).map(([key, def]) => [
+    key,
+    { value: key, ...def },
+  ]),
+);
 
 async function main() {
-  const targetArg = process.argv[2];
+  const command = process.argv[2];
 
-  // For upgrade command, ensure we're running the latest published version
-  if (targetArg === "upgrade" && !process.env.__MVAGNON_SELF_UPDATE) {
-    let latestVersion;
-    try {
-      const res = await fetch(
-        "https://registry.npmjs.org/mvagnon-agents/latest",
-      );
-      const data = await res.json();
-      latestVersion = data.version;
-    } catch {
-      // Network error, proceed with local version
-    }
-    if (latestVersion && latestVersion !== VERSION) {
-      const { execSync } = await import("node:child_process");
-      try {
-        execSync(`npx --yes mvagnon-agents@${latestVersion} upgrade`, {
-          stdio: "inherit",
-          env: { ...process.env, __MVAGNON_SELF_UPDATE: "1" },
-        });
-        process.exit(0);
-      } catch {
-        // Re-exec failed, fall through to local upgrade
-      }
-    }
+  if (command === "propagate") {
+    const { runPropagate } = await import("./lib/propagate.mjs");
+    return runPropagate({ TOOLS, CATEGORIES, VERSION });
   }
 
-  // Auto-upgrade local project if it exists
-  const localDir = path.join(process.cwd(), INTERMEDIATE_DIR);
-  const localReport = fs.existsSync(localDir)
-    ? upgradeLocalIntermediateDir(localDir)
-    : null;
-
-  if (targetArg === "upgrade") {
-    console.clear();
-    const upgradeBanner = [
-      "                                    __                           _     ",
-      " _ ____ ____ _ __ _ _ _  ___ _ _   / /  _ _ __  __ _ _ _ __ _ __| |___ ",
-      "| '  \\ V / _` / _` | ' \\/ _ \\ ' \\ / / || | '_ \\/ _` | '_/ _` / _` / -_)",
-      "|_|_|_\\_/\\__,_\\__, |_||_\\___/_||_/_/ \\_,_| .__/\\__, |_| \\__,_\\__,_\\___|",
-      "              |___/                      |_|   |___/                    ",
-    ];
-    console.log("\x1b[36m" + upgradeBanner.join("\n") + "\x1b[0m");
-    console.log("\x1b[2m  v" + VERSION + "\x1b[0m\n");
-
-    if (!localReport) {
-      p.log.error(
-        `${INTERMEDIATE_DIR}/ not found in current directory. Run bootstrap first.`,
-      );
-      process.exit(1);
-    }
-    printUpgradeReport(localReport);
-    process.exit(0);
-  }
-
-  if (targetArg === "manage") {
-    const { runManage } = await import("./lib/manage.mjs");
-    return runManage({
-      TOOLS,
-      CATEGORIES,
-      INTERMEDIATE_DIR,
-      CONFIG_DIR,
-      VERSION,
-    });
-  }
-
-  if (!targetArg) {
+  if (!command) {
     console.error("Usage: npx mvagnon-agents <target-path>");
-    console.error("       npx mvagnon-agents upgrade");
-    console.error("       npx mvagnon-agents manage");
+    console.error("       npx mvagnon-agents propagate");
     process.exit(1);
   }
 
-  const targetPath = resolvePath(targetArg);
+  const targetPath = resolvePath(command);
 
   if (!fs.existsSync(targetPath)) {
     console.error(`Error: Directory not found: ${targetPath}`);
@@ -161,12 +49,6 @@ async function main() {
   if (!fs.statSync(targetPath).isDirectory()) {
     console.error(`Error: Path must be a directory: ${targetPath}`);
     process.exit(1);
-  }
-
-  // Also upgrade target's local project if different from cwd
-  const targetLocalDir = path.join(targetPath, INTERMEDIATE_DIR);
-  if (targetPath !== process.cwd() && fs.existsSync(targetLocalDir)) {
-    upgradeLocalIntermediateDir(targetLocalDir);
   }
 
   console.clear();
@@ -197,185 +79,33 @@ async function main() {
     p.cancel("Setup cancelled");
     process.exit(0);
   }
+
   const selectedTools = selectedToolKeys.map((key) => TOOLS[key]);
 
-  // Determine which categories the selected tools support
-  const supportedCategories = new Set();
-  for (const tool of selectedTools) {
-    for (const cat of CATEGORIES) {
-      if (tool.paths[cat]) supportedCategories.add(cat);
-    }
-  }
-
-  // Step 2: Select resources (rules, skills in one menu)
-  const allResourceOptions = [];
-  for (const category of CATEGORIES) {
-    if (!supportedCategories.has(category)) continue;
-
-    const { projectSensitive, generic, depSensitive } =
-      scanAvailableItems(category);
-
-    for (const name of projectSensitive) {
-      allResourceOptions.push({
-        value: `ps:${category}:${name}`,
-        label: name,
-        hint: `${category} · project-sensitive`,
-      });
-    }
-    for (const name of generic) {
-      allResourceOptions.push({
-        value: `gen:${category}:${name}`,
-        label: name,
-        hint: category,
-      });
-    }
-    for (const { name, dep } of depSensitive) {
-      allResourceOptions.push({
-        value: `dep:${category}:${dep}/${name}`,
-        label: name,
-        hint: `${category} · requires ${dep}`,
-      });
-    }
-  }
-
-  const selections = {};
-  if (allResourceOptions.length > 0) {
-    const selected = await p.multiselect({
-      message: "Pick resources",
-      options: allResourceOptions,
-      required: false,
-    });
-    if (p.isCancel(selected)) {
-      p.cancel("Setup cancelled");
-      process.exit(0);
-    }
-
-    for (const val of selected || []) {
-      const [type, category, ...nameParts] = val.split(":");
-      const rest = nameParts.join(":");
-      if (!selections[category])
-        selections[category] = {
-          projectSensitive: [],
-          generic: [],
-          depSensitive: [],
-        };
-      if (type === "ps") selections[category].projectSensitive.push(rest);
-      else if (type === "dep") {
-        const lastSlash = rest.lastIndexOf("/");
-        const dep = rest.substring(0, lastSlash);
-        const name = rest.substring(lastSlash + 1);
-        selections[category].depSensitive.push({ name, dep });
-      } else selections[category].generic.push(rest);
-    }
-  }
-
-  // Step 5: Gitignore question
+  // Step 2: Gitignore question
   const addGitignore = await p.confirm({
-    message: "Add agents configuration to .gitignore?",
+    message: "Add agent configs to .gitignore?",
     initialValue: false,
-    hint: "Srongly recommended on public repositories.",
   });
   if (p.isCancel(addGitignore)) {
     p.cancel("Setup cancelled");
     process.exit(0);
   }
 
+  // Step 3: Create tool instances
   const s = p.spinner();
-  s.start("Copying files + creating relative links");
+  s.start("Creating tool instances");
 
   const summaryLines = [];
-  const processedIntermediateFiles = new Set();
-
-  const manifest = { version: 1, items: {} };
 
   for (const tool of selectedTools) {
-    const stats = { rules: 0, skills: 0, agents: 0 };
-    const { paths } = tool;
+    const lines = createToolInstance(targetPath, tool);
 
-    for (const category of CATEGORIES) {
-      if (!paths[category] || !selections[category]) continue;
+    updateGitignore(targetPath, tool, addGitignore);
+    lines.push(".gitignore: updated");
 
-      const { projectSensitive, generic, depSensitive } = selections[category];
-
-      fs.mkdirSync(path.join(targetPath, paths[category]), { recursive: true });
-
-      const result = await installItems(
-        category,
-        projectSensitive,
-        generic,
-        depSensitive || [],
-        path.join(targetPath, paths[category]),
-        path.join(targetPath, INTERMEDIATE_DIR),
-        processedIntermediateFiles,
-        { spinner: s, projectRoot: targetPath },
-      );
-      stats[category] = result.count;
-      if (Object.keys(result.manifestEntries).length > 0) {
-        if (!manifest.items[category]) manifest.items[category] = {};
-        Object.assign(manifest.items[category], result.manifestEntries);
-      }
-    }
-
-    for (const [src, dest] of Object.entries(tool.rootFiles)) {
-      const srcPath = path.join(CONFIG_DIR, src);
-      if (fs.existsSync(srcPath)) {
-        const intermediateRoot = path.join(targetPath, INTERMEDIATE_DIR);
-        fs.mkdirSync(intermediateRoot, { recursive: true });
-        const intermediatePath = path.join(intermediateRoot, src);
-        if (!processedIntermediateFiles.has(intermediatePath)) {
-          await copyWithConfirm(srcPath, intermediatePath, {
-            spinner: s,
-            projectRoot: targetPath,
-          });
-          processedIntermediateFiles.add(intermediatePath);
-        }
-        createRelativeSymlink(intermediatePath, path.join(targetPath, dest));
-      }
-    }
-
-    for (const [src, dest] of Object.entries(tool.configFiles)) {
-      const srcPath = path.join(CONFIG_DIR, src);
-      if (fs.existsSync(srcPath)) {
-        // Copy template to .mvagnon-agents/ as .example (named after dest)
-        const intermediateRoot = path.join(targetPath, INTERMEDIATE_DIR);
-        fs.mkdirSync(intermediateRoot, { recursive: true });
-        const exampleName = path.basename(dest) + ".example";
-        const examplePath = path.join(intermediateRoot, exampleName);
-        copyPath(srcPath, examplePath);
-      }
-    }
-
-    updateGitignore(targetPath, tool, !addGitignore);
-
-    const toolSummary = [
-      stats.rules > 0 ? `Rules:  ${stats.rules} linked` : null,
-      paths.skills && stats.skills > 0
-        ? `Skills: ${stats.skills} linked`
-        : null,
-      paths.agents && stats.agents > 0
-        ? `Agents: ${stats.agents} linked`
-        : null,
-      ...Object.values(tool.rootFiles).map((f) => `${f}: linked`),
-      ...Object.entries(tool.configFiles).map(
-        ([, dest]) =>
-          `${INTERMEDIATE_DIR}/${path.basename(dest)}.example: copied`,
-      ),
-      addGitignore
-        ? `.gitignore: entries added`
-        : `.gitignore: exceptions added`,
-    ].filter(Boolean);
-
-    summaryLines.push({ tool, lines: toolSummary });
+    summaryLines.push({ tool, lines });
   }
-
-  writeManifest(path.join(targetPath, INTERMEDIATE_DIR), manifest);
-
-  addGitignoreEntry(
-    targetPath,
-    INTERMEDIATE_DIR,
-    "mvagnon-agents",
-    !addGitignore,
-  );
 
   s.stop("Setup complete");
 
@@ -383,227 +113,114 @@ async function main() {
     p.note(lines.join("\n"), `${tool.label} Setup`);
   }
 
-  // Build dynamic Next Steps
-  const projectSensitiveFiles = [];
-  for (const category of CATEGORIES) {
-    if (!selections[category]) continue;
-    for (const name of selections[category].projectSensitive) {
-      projectSensitiveFiles.push(`${category}/${name}`);
-    }
-  }
-
-  const nextSteps = [];
-  let stepNum = 1;
-
-  // Config file setup step: list copy commands per tool
-  const configCopyLines = [];
-  for (const tool of selectedTools) {
-    for (const [, dest] of Object.entries(tool.configFiles)) {
-      const exampleName = path.basename(dest) + ".example";
-      configCopyLines.push(
-        `   ${tool.label}: cp ${INTERMEDIATE_DIR}/${exampleName} ${dest}`,
-      );
-    }
-  }
-  if (configCopyLines.length > 0) {
-    nextSteps.push(
-      `${stepNum}. Copy config files and replace the API key placeholders:`,
+  // Config files reminder
+  const configLines = selectedTools
+    .filter((t) => t.configFile)
+    .map((t) => `  ${t.label}: ${t.configFile}`);
+  if (configLines.length > 0) {
+    p.note(
+      [
+        "Don't forget to configure your MCP servers in:",
+        ...configLines,
+        "",
+        "These files are always gitignored for security.",
+      ].join("\n"),
+      "MCP Configuration",
     );
-    nextSteps.push(...configCopyLines);
-    stepNum++;
   }
 
-  if (projectSensitiveFiles.length > 0) {
-    nextSteps.push(
-      `${stepNum}. Modify the following project-sensitive files to fit your project:`,
-    );
-    for (const f of projectSensitiveFiles) {
-      nextSteps.push(`   - ${f}`);
-    }
-    stepNum++;
-  }
-
-  const requiredDeps = new Map();
-  for (const category of CATEGORIES) {
-    if (!selections[category]) continue;
-    for (const { name, dep } of selections[category].depSensitive || []) {
-      if (!requiredDeps.has(dep)) requiredDeps.set(dep, []);
-      requiredDeps.get(dep).push(name);
-    }
-  }
-  if (requiredDeps.size > 0) {
-    nextSteps.push(
-      `${stepNum}. Ensure the following dependencies are installed in your project:`,
-    );
-    for (const [dep, items] of requiredDeps) {
-      nextSteps.push(`   - ${dep} (used by: ${items.join(", ")})`);
-    }
-    stepNum++;
-  }
-
-  nextSteps.push(
-    `${stepNum}. Add rules, skills, agents, MCPs or plugins based on your needs for each tool.`,
+  p.note(
+    "npx mvagnon-agents propagate   Copy one tool's config to other tools",
+    "Available Commands",
   );
-  stepNum++;
-
-  nextSteps.push(`${stepNum}. Configure hooks for linting and formatting.`);
-
-  p.note(nextSteps.join("\n"), "Next Steps");
-
-  const commands = [
-    "npx mvagnon-agents manage    Add tools, rules, skills or agents to an existing project",
-    "npx mvagnon-agents upgrade   Sync generic resources with the latest package version",
-  ];
-  p.note(commands.join("\n"), "Available Commands");
 
   p.outro("Done");
 }
 
-function scanAvailableItems(category) {
-  const projectSensitive = [];
-  const generic = [];
-  const depSensitive = [];
+/**
+ * Creates directories, empty root file, and pre-filled config file for a single tool.
+ * Returns summary lines describing what was created.
+ */
+function createToolInstance(projectRoot, tool) {
+  const lines = [];
 
-  const psDir = path.join(CONFIG_DIR, category, "project-sensitive");
-  if (fs.existsSync(psDir)) {
-    for (const entry of fs.readdirSync(psDir)) {
-      if (entry === ".gitkeep") continue;
-      projectSensitive.push(entry);
+  for (const dirPath of Object.values(tool.paths)) {
+    fs.mkdirSync(path.join(projectRoot, dirPath), { recursive: true });
+    lines.push(`${dirPath}/: created`);
+  }
+
+  // Root file (empty)
+  if (tool.rootFile) {
+    const destPath = path.join(projectRoot, tool.rootFile);
+    if (!fs.existsSync(destPath)) {
+      fs.writeFileSync(destPath, "", "utf-8");
+      lines.push(`${tool.rootFile}: created`);
+    } else {
+      lines.push(`${tool.rootFile}: already exists, skipped`);
     }
   }
 
-  const genDir = path.join(CONFIG_DIR, category, "generic");
-  if (fs.existsSync(genDir)) {
-    for (const entry of fs.readdirSync(genDir)) {
-      if (entry === ".gitkeep") continue;
-      generic.push(entry);
+  // Config file (pre-filled empty structure)
+  if (tool.configFile) {
+    const configPath = path.join(projectRoot, tool.configFile);
+    if (!fs.existsSync(configPath)) {
+      fs.mkdirSync(path.dirname(configPath), { recursive: true });
+      fs.writeFileSync(configPath, renderConfigTemplate(tool), "utf-8");
+      lines.push(`${tool.configFile}: created`);
+    } else {
+      lines.push(`${tool.configFile}: already exists, skipped`);
     }
   }
 
-  const depDir = path.join(CONFIG_DIR, category, "dep-sensitive");
-  if (fs.existsSync(depDir)) {
-    const seenNames = new Map();
-    const depEntries = fs.readdirSync(depDir);
-    for (const depEntry of depEntries) {
-      if (depEntry === ".gitkeep") continue;
-      const depEntryPath = path.join(depDir, depEntry);
-      if (!fs.statSync(depEntryPath).isDirectory()) continue;
-
-      // @-prefixed entries are scoped packages: descend one more level
-      const deps = depEntry.startsWith("@")
-        ? fs
-            .readdirSync(depEntryPath)
-            .filter(
-              (e) =>
-                e !== ".gitkeep" &&
-                fs.statSync(path.join(depEntryPath, e)).isDirectory(),
-            )
-            .map((e) => ({
-              dep: `${depEntry}/${e}`,
-              depPath: path.join(depEntryPath, e),
-            }))
-        : [{ dep: depEntry, depPath: depEntryPath }];
-
-      for (const { dep, depPath } of deps) {
-        for (const skillEntry of fs.readdirSync(depPath)) {
-          if (skillEntry === ".gitkeep") continue;
-          if (!fs.statSync(path.join(depPath, skillEntry)).isDirectory())
-            continue;
-
-          if (seenNames.has(skillEntry)) {
-            console.warn(
-              `Warning: skill "${skillEntry}" exists in both "${seenNames.get(skillEntry)}" and "${dep}" — skipping duplicate`,
-            );
-            continue;
-          }
-          seenNames.set(skillEntry, dep);
-          depSensitive.push({ name: skillEntry, dep });
-        }
-      }
-    }
-  }
-
-  return { projectSensitive, generic, depSensitive };
+  return lines;
 }
 
-async function installItems(
-  category,
-  projectSensitiveItems,
-  genericItems,
-  depSensitiveItems,
-  toolDir,
-  intermediateBase,
-  processedIntermediateFiles,
-  { spinner, projectRoot } = {},
-) {
-  let count = 0;
-  const manifestEntries = {};
-  const intermediateDir = path.join(intermediateBase, category);
+/**
+ * Renders a config template to string.
+ * JSON config files get pretty-printed from the object; others are used as-is.
+ */
+function renderConfigTemplate(tool) {
+  const tpl = tool.configTemplate;
+  if (typeof tpl === "object") {
+    return JSON.stringify(tpl, null, 2) + "\n";
+  }
+  return tpl;
+}
 
-  const itemGroups = [
-    {
-      items: projectSensitiveItems,
-      type: "project-sensitive",
-      sourceSubdir: "project-sensitive",
-    },
-    { items: genericItems, type: "generic", sourceSubdir: "generic" },
-  ];
+/**
+ * Updates .gitignore for a tool.
+ * Config/MCP files are ALWAYS gitignored.
+ * Tool directories and root files are gitignored only if `ignoreAll` is true.
+ */
+function updateGitignore(projectRoot, tool, ignoreAll) {
+  const gitignorePath = path.join(projectRoot, ".gitignore");
+  const sectionHeader = `# ${tool.label} Configuration`;
+  let content = "";
 
-  for (const { items, type, sourceSubdir } of itemGroups) {
-    const sourceDir = path.join(CONFIG_DIR, category, sourceSubdir);
-
-    for (const item of items) {
-      const srcPath = path.join(sourceDir, item);
-      if (!fs.existsSync(srcPath)) continue;
-
-      fs.mkdirSync(intermediateDir, { recursive: true });
-      const intermediatePath = path.join(intermediateDir, item);
-
-      if (!processedIntermediateFiles.has(intermediatePath)) {
-        if (type === "project-sensitive") {
-          const copied = await copyWithConfirm(srcPath, intermediatePath, {
-            spinner,
-            projectRoot,
-          });
-          if (!copied) {
-            // User chose not to overwrite; still symlink + track existing file
-            createRelativeSymlink(intermediatePath, path.join(toolDir, item));
-            manifestEntries[item] = type;
-            count++;
-            processedIntermediateFiles.add(intermediatePath);
-            continue;
-          }
-        } else {
-          copyPath(srcPath, intermediatePath);
-        }
-        processedIntermediateFiles.add(intermediatePath);
-      }
-
-      createRelativeSymlink(intermediatePath, path.join(toolDir, item));
-      manifestEntries[item] = type;
-      count++;
-    }
+  if (fs.existsSync(gitignorePath)) {
+    content = fs.readFileSync(gitignorePath, "utf-8");
+    if (content.includes(sectionHeader)) return;
+    if (content.length > 0 && !content.endsWith("\n")) content += "\n";
+    content += "\n";
   }
 
-  // dep-sensitive: source from config/{category}/dep-sensitive/{dep}/{name}, intermediate stays flat
-  for (const { name, dep } of depSensitiveItems) {
-    const srcPath = path.join(CONFIG_DIR, category, "dep-sensitive", dep, name);
-    if (!fs.existsSync(srcPath)) continue;
+  const entries = [];
 
-    fs.mkdirSync(intermediateDir, { recursive: true });
-    const intermediatePath = path.join(intermediateDir, name);
-
-    if (!processedIntermediateFiles.has(intermediatePath)) {
-      copyPath(srcPath, intermediatePath);
-      processedIntermediateFiles.add(intermediatePath);
-    }
-
-    createRelativeSymlink(intermediatePath, path.join(toolDir, name));
-    manifestEntries[name] = `dep-sensitive:${dep}`;
-    count++;
+  if (ignoreAll) {
+    entries.push(...tool.gitignoreEntries);
   }
 
-  return { count, manifestEntries };
+  // Config file is ALWAYS gitignored
+  if (tool.configFile) {
+    entries.push(tool.configFile);
+  }
+
+  if (entries.length === 0) return;
+
+  content += sectionHeader + "\n";
+  content += entries.join("\n") + "\n";
+
+  fs.writeFileSync(gitignorePath, content);
 }
 
 function resolvePath(inputPath) {
@@ -611,264 +228,6 @@ function resolvePath(inputPath) {
     inputPath = inputPath.replace("~", process.env.HOME);
   }
   return path.resolve(inputPath);
-}
-
-async function copyWithConfirm(source, target, { spinner, projectRoot } = {}) {
-  if (fs.existsSync(target)) {
-    try {
-      if (!fs.lstatSync(target).isSymbolicLink()) {
-        const label = projectRoot
-          ? path.relative(projectRoot, target)
-          : path.basename(target);
-        if (spinner) spinner.stop("Existing file found");
-        const overwrite = await p.confirm({
-          message: `${label} already exists. Overwrite?`,
-          initialValue: false,
-        });
-        if (p.isCancel(overwrite)) {
-          p.cancel("Setup cancelled");
-          process.exit(0);
-        }
-        if (spinner) spinner.start("Continuing setup");
-        if (!overwrite) return false;
-      }
-    } catch {
-      // lstat failed, proceed with copy
-    }
-  }
-
-  copyPath(source, target);
-  return true;
-}
-
-function removePath(target) {
-  if (
-    fs.existsSync(target) ||
-    fs.lstatSync(target, { throwIfNoEntry: false })
-  ) {
-    fs.rmSync(target, { recursive: true, force: true });
-  }
-}
-
-function createRelativeSymlink(source, target) {
-  removePath(target);
-  const relPath = path.relative(path.dirname(target), source);
-  fs.symlinkSync(relPath, target);
-}
-
-function copyPath(source, target) {
-  removePath(target);
-
-  if (fs.statSync(source).isDirectory()) {
-    fs.cpSync(source, target, { recursive: true });
-  } else {
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.copyFileSync(source, target);
-  }
-}
-
-function updateGitignore(targetPath, tool, exceptions = false) {
-  const gitignorePath = path.join(targetPath, ".gitignore");
-  const sectionHeader = `# ${tool.label} Configuration`;
-  let content = "";
-
-  if (fs.existsSync(gitignorePath)) {
-    content = fs.readFileSync(gitignorePath, "utf-8");
-
-    if (content.includes(sectionHeader)) return;
-
-    if (content.length > 0 && !content.endsWith("\n")) content += "\n";
-    content += "\n";
-  }
-
-  const entries = exceptions
-    ? tool.gitignoreEntries.map((e) => `!${e}`)
-    : tool.gitignoreEntries;
-  const configEntries = tool.configGitignoreEntries || [];
-
-  content += sectionHeader + "\n";
-  content += [...entries, ...configEntries].join("\n") + "\n";
-
-  fs.writeFileSync(gitignorePath, content);
-}
-
-function addGitignoreEntry(
-  targetPath,
-  entry,
-  sectionComment,
-  exceptions = false,
-) {
-  const gitignorePath = path.join(targetPath, ".gitignore");
-  const effectiveEntry = exceptions ? `!${entry}` : entry;
-  let content = "";
-
-  if (fs.existsSync(gitignorePath)) {
-    content = fs.readFileSync(gitignorePath, "utf-8");
-    if (content.split("\n").some((line) => line.trim() === effectiveEntry))
-      return;
-    if (content.length > 0 && !content.endsWith("\n")) content += "\n";
-    content += "\n";
-  }
-
-  if (sectionComment) {
-    content += `# ${sectionComment}\n`;
-  }
-  content += effectiveEntry + "\n";
-  if (exceptions) {
-    content += `!${entry}/**` + "\n";
-  }
-  fs.writeFileSync(gitignorePath, content);
-}
-
-function printUpgradeReport(report) {
-  const changed = report.updated.length > 0 || report.removed.length > 0;
-
-  if (!changed) {
-    p.log.info("Already up to date.");
-  } else {
-    if (report.updated.length)
-      p.log.success(`Updated: ${report.updated.join(", ")}`);
-    if (report.removed.length)
-      p.log.warn(`Removed: ${report.removed.join(", ")}`);
-  }
-
-  p.outro(changed ? "Project updated" : "Done");
-}
-
-function upgradeLocalIntermediateDir(localDir) {
-  const updated = [];
-  const removed = [];
-
-  const manifest = readManifest(localDir);
-  let manifestChanged = false;
-
-  for (const category of CATEGORIES) {
-    const items = manifest.items[category];
-    if (!items) continue;
-
-    for (const [item, type] of Object.entries(items)) {
-      if (type === "project-sensitive") continue;
-
-      const localItem = path.join(localDir, category, item);
-      const sourceItem = type.startsWith("dep-sensitive:")
-        ? path.join(
-            CONFIG_DIR,
-            category,
-            "dep-sensitive",
-            type.slice("dep-sensitive:".length),
-            item,
-          )
-        : path.join(CONFIG_DIR, category, type, item);
-
-      if (!fs.existsSync(sourceItem)) {
-        if (fs.existsSync(localItem)) {
-          fs.rmSync(localItem, { recursive: true, force: true });
-        }
-        delete items[item];
-        manifestChanged = true;
-        removed.push(path.join(category, item));
-        continue;
-      }
-
-      if (!fs.existsSync(localItem)) continue;
-
-      if (fs.statSync(sourceItem).isDirectory()) {
-        if (syncDirectory(sourceItem, localItem)) {
-          updated.push(path.join(category, item));
-        }
-      } else {
-        if (syncFile(sourceItem, localItem)) {
-          updated.push(path.join(category, item));
-        }
-      }
-    }
-
-    if (Object.keys(items).length === 0) {
-      delete manifest.items[category];
-      manifestChanged = true;
-    }
-  }
-
-  // Also update root-level files (AGENTS.md etc.)
-  for (const entry of fs.readdirSync(localDir)) {
-    const localPath = path.join(localDir, entry);
-    if (fs.statSync(localPath).isDirectory()) continue;
-    if (entry === "manifest.json") continue;
-    if (entry.endsWith(".example")) continue;
-
-    const sourceFile = path.join(CONFIG_DIR, entry);
-    if (!fs.existsSync(sourceFile)) {
-      fs.rmSync(localPath, { force: true });
-      removed.push(entry);
-      continue;
-    }
-
-    if (syncFile(sourceFile, localPath)) {
-      updated.push(entry);
-    }
-  }
-
-  // Update existing .example config files from TOOLS definitions
-  for (const tool of Object.values(TOOLS)) {
-    for (const [src, dest] of Object.entries(tool.configFiles)) {
-      const sourcePath = path.join(CONFIG_DIR, src);
-      if (!fs.existsSync(sourcePath)) continue;
-
-      const exampleName = path.basename(dest) + ".example";
-      const localPath = path.join(localDir, exampleName);
-      if (!fs.existsSync(localPath)) {
-        continue;
-      } else if (syncFile(sourcePath, localPath)) {
-        updated.push(exampleName);
-      }
-    }
-  }
-
-  if (manifestChanged) {
-    writeManifest(localDir, manifest);
-  }
-
-  return { updated, removed };
-}
-
-function syncFile(source, target) {
-  const srcContent = fs.readFileSync(source);
-  const tgtContent = fs.readFileSync(target);
-  if (!srcContent.equals(tgtContent)) {
-    fs.copyFileSync(source, target);
-    return true;
-  }
-  return false;
-}
-
-function syncDirectory(source, target) {
-  let changed = false;
-
-  for (const entry of fs.readdirSync(source)) {
-    const srcPath = path.join(source, entry);
-    const tgtPath = path.join(target, entry);
-
-    if (fs.statSync(srcPath).isDirectory()) {
-      fs.mkdirSync(tgtPath, { recursive: true });
-      if (syncDirectory(srcPath, tgtPath)) changed = true;
-    } else {
-      if (!fs.existsSync(tgtPath)) {
-        fs.copyFileSync(srcPath, tgtPath);
-        changed = true;
-      } else if (syncFile(srcPath, tgtPath)) {
-        changed = true;
-      }
-    }
-  }
-
-  for (const entry of fs.readdirSync(target)) {
-    if (!fs.existsSync(path.join(source, entry))) {
-      fs.rmSync(path.join(target, entry), { recursive: true, force: true });
-      changed = true;
-    }
-  }
-
-  return changed;
 }
 
 main().catch(console.error);

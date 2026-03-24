@@ -1,0 +1,58 @@
+{
+  "categories": ["rules", "skills", "agents"],
+  "tools": {
+    "claudecode": {
+      "label": "Claude Code",
+      "hint": "Anthropic's CLI for Claude",
+      "paths": {
+        "rules": ".claude/rules",
+        "skills": ".claude/skills",
+        "agents": ".claude/agents"
+      },
+      "rootFile": "CLAUDE.md",
+      "configFile": ".mcp.json",
+      "configTemplate": { "mcpServers": {} },
+      "gitignoreEntries": [".claude", "CLAUDE.md"]
+    },
+    "opencode": {
+      "label": "OpenCode",
+      "hint": "Open-source AI coding assistant",
+      "paths": {
+        "rules": ".opencode/rules",
+        "skills": ".opencode/skills",
+        "agents": ".opencode/agents"
+      },
+      "rootFile": "AGENTS.md",
+      "configFile": "opencode.json",
+      "configTemplate": {
+        "$schema": "https://opencode.ai/config.json",
+        "mcp": {}
+      },
+      "gitignoreEntries": [".opencode", "AGENTS.md"]
+    },
+    "cursor": {
+      "label": "Cursor",
+      "hint": "AI-powered code editor",
+      "paths": {
+        "rules": ".cursor/rules",
+        "skills": ".cursor/skills",
+        "agents": ".cursor/agents"
+      },
+      "rootFile": null,
+      "configFile": ".cursor/mcp.json",
+      "configTemplate": { "mcpServers": {} },
+      "gitignoreEntries": [".cursor"]
+    },
+    "codex": {
+      "label": "Codex",
+      "hint": "OpenAI's coding agent CLI",
+      "paths": {
+        "skills": ".agents/skills"
+      },
+      "rootFile": "AGENTS.md",
+      "configFile": ".codex/config.toml",
+      "configTemplate": "[mcp_servers]\n",
+      "gitignoreEntries": [".codex", ".agents", "AGENTS.md"]
+    }
+  }
+}
